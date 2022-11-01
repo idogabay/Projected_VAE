@@ -111,8 +111,8 @@ class VaeCnnDecoder(torch.nn.Module):
         self.z_dim = z_dim
         ### here need to concate label
         ###block0
-        self.fc0 = nn.Linear(self.z_dim, 100 * 4 * 4 * 4)
-        self.bn0 = nn.BatchNorm1d(100 * 4 * 4 * 4)
+        self.fc0 = nn.Linear(self.z_dim, 16*16*64*4)#100 * 4 * 4 * 4)
+        self.bn0 = nn.BatchNorm1d(16*16*64*4)#100 * 4 * 4 * 4)
         
         ###here need to reshape signal
         ###block1
@@ -126,7 +126,7 @@ class VaeCnnDecoder(torch.nn.Module):
         self.relu2 = nn.LeakyReLU()
         
         ###block3
-        self.deconv3 = nn.ConvTranspose2d(in_channels=64,out_channels= 64, kernel_size=(3, 3), stride=(2, 2), padding=2, output_padding=1)
+        self.deconv3 = nn.ConvTranspose2d(in_channels=64,out_channels= 64, kernel_size=(3, 3), stride=(2, 2), padding=1, output_padding=1)
         self.bn3 = nn.BatchNorm2d(64)
         self.relu3 = nn.LeakyReLU()
 
@@ -149,12 +149,12 @@ class VaeCnnDecoder(torch.nn.Module):
         """
         #x = torch.cat([x,labels],dim=1)
         x = self.bn0(self.fc0(x))
-        x = x.reshape(x.shape[0],100*4,4,4)
+        x = x.reshape(x.shape[0],64*4,16,16)
         x = self.relu1(self.bn1(self.deconv1(x)))
         x = self.relu2(self.bn2(self.deconv2(x)))
         x = self.relu3(self.bn3(self.deconv3(x)))
         x = self.sigmoid4(self.deconv4(x))
-        print("decode",x.shape)
+        # print("decode",x.shape)
 
         
         #x = self.decoder(x)
@@ -209,12 +209,12 @@ class Vae_cnn_1(torch.nn.Module):
         This is the function called when doing the forward pass:
         return x_recon, mu, logvar, z = Vae(X)
         """
-        print("input:",x.shape)
+        #print("input:",x.shape)
         z, mu, logvar = self.encode(x)
         #if x_cond is not None:
         #z = torch.cat([z, x_cond], dim=1)
         x_recon = self.decode(z)#,labels)
-        print("recon:",x.shape)
+        #print("recon:",x.shape)
         #x_recon = self.decode(z)
         return x_recon, mu, logvar, z
 

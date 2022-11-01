@@ -16,7 +16,7 @@ import our_datasets
 epochs = 5
 x_shape = (3,256,256)
 lr = 1e-4
-batch_size = 256
+batch_size = 2
 pics_path ="/home/user_118/datasets/Flowers/resized_images"
 weights_save_path = "/home/user_118/datasets/Flowers/weights"
 dataset_name = "flowers"
