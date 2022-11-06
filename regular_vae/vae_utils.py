@@ -267,7 +267,7 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,loss_type
     else:
         vae_optim = torch.optim.SGD(params=model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=vae_optim,
-                mode='min',factor=0.8,patience=5,verbose = True)
+                mode='min',threshold=0.01,threshold_mode='rel',factor=0.8,patience=5,verbose = True)
 
     weights_name = dataset_name+"image_size"+str(x_shape[1])+"_beta_"+str(beta)+"_epochs_"+str(epochs)+"_z_dim_"+\
                     str(z_dim)+"_loss_type_"+str(loss_type)+\
@@ -304,7 +304,9 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,loss_type
             total_loss.backward()
             vae_optim.step()
             # save loss
-            batch_total_losses.append(total_loss.data.cpu().item())
+            # print(total_loss)
+            batch_total_losses.append(total_loss.cpu().item())
+            # print(total_loss.cpu().item())
             # batch_kl_losses.append(kl)
             # batch_recon_losses.append(recon_loss)
         loss = np.mean(batch_total_losses)
@@ -344,3 +346,6 @@ def generate_samples(num_of_samples,model,weights_path):
             sample = sample.permute(1, 2, 0).data.cpu().numpy()
             ax.imshow(sample)
             ax.set_axis_off()
+        plt.show()
+        
+    print("done")

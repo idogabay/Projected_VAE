@@ -13,10 +13,10 @@ import our_datasets
 
 
 
-epochs = 5
+epochs = 500
 x_shape = (3,256,256)
-lr = 1e-4
-batch_size = 2
+lr = 1e-6
+batch_size = 200
 pics_path ="/home/user_118/datasets/Flowers/resized_images"
 weights_save_path = "/home/user_118/datasets/Flowers/weights"
 dataset_name = "flowers"
@@ -29,8 +29,8 @@ dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=
 #num_of_classes = 18
 loss_type = "bce"
 optimizer_type = "Adam"
-z_dim = 1000
-beta = 3
+z_dim = 300
+beta = 1
 device = set_device()
 model = Vae_cnn_1(z_dim=z_dim,x_shape=x_shape,device=device).to(device)
 
