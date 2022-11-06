@@ -170,11 +170,11 @@ class Vae_cnn_1(torch.nn.Module):
 
         #if self.cond_dim is not None:
         #x_dim+= cond_dim
-        self.encoder = VaeCnnEncoder(z_dim,x_shape, self.device)#,self.cond_dim)
+        self.encoder = VaeCnnEncoder_06_11(z_dim,x_shape, self.device)#,self.cond_dim)
         
         #if self.cond_dim is not None:
         #self.z_dim+=cond_dim
-        self.decoder = VaeCnnDecoder(self.z_dim)#,self.cond_dim)
+        self.decoder = VaeCnnDecoder_06_11(self.z_dim)#,self.cond_dim)
         
 
     def encode(self, x):
@@ -349,3 +349,217 @@ def generate_samples(num_of_samples,model,weights_path):
         plt.show()
         
     print("done")
+
+#encoder new 06/11/22- Q(z|X)
+class VaeCnnEncoder_06_11(torch.nn.Module):
+    """
+       This class builds the encoder for the VAE
+       :param x_dim: input dimensions
+       :param hidden_size: hidden layer size
+       :param z_dim: latent dimensions
+       :param device: cpu or gpu
+       """
+
+    def __init__(self, z_dim,x_shape, device):
+        super(VaeCnnEncoder_06_11, self).__init__()
+        self.z_dim = z_dim
+        self.device = device
+        
+        ###block1
+        self.conv1 = nn.Conv2d(in_channels=3, out_channels=8, kernel_size=(3, 3), stride=(2, 2), padding=0)
+        self.bn1 = nn.BatchNorm2d(num_features=8)
+        self.relu1 = nn.LeakyReLU()
+        
+        ###block2
+        self.conv2 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.bn2 = nn.BatchNorm2d(num_features=16)
+        self.relu2 = nn.LeakyReLU()
+
+        ###block3
+        self.conv3 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=0)
+        self.bn3 = nn.BatchNorm2d(num_features=32)
+        self.relu3 = nn.LeakyReLU()
+        
+        ###block4
+        self.conv4 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.bn4 = nn.BatchNorm2d(num_features=64)
+        self.relu4 = nn.LeakyReLU()
+        
+        ###block5
+        self.conv5 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=0)
+        self.bn5 = nn.BatchNorm2d(num_features=64)
+        self.relu5 = nn.LeakyReLU()
+
+        ###block6
+        self.conv6 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.bn6 = nn.BatchNorm2d(num_features=64)
+        self.relu6 = nn.LeakyReLU()
+
+        ###block7
+        self.conv7 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=0)
+        self.bn7 = nn.BatchNorm2d(num_features=64)
+        self.relu7 = nn.LeakyReLU()
+
+        ###block8
+        self.conv8 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.bn8 = nn.BatchNorm2d(num_features=128)
+        self.relu8 = nn.LeakyReLU()
+        
+        ###block9
+        self.conv9 = nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), stride=(2, 2), padding=0)
+        self.bn9 = nn.BatchNorm2d(num_features=128)
+        self.relu9 = nn.LeakyReLU()
+        
+        ### block 10
+        self.conv10 = nn.Conv2d(in_channels=128, out_channels=32, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.bn10 = nn.BatchNorm2d(num_features=32)
+        self.relu10 = nn.LeakyReLU()
+        
+        #self.features = nn.Sequential(nn.Linear(x_dim, self.hidden_size),nn.ReLU())
+        ###here need to concate
+        self.fc1 = nn.Linear(288, self.z_dim)#nn.Linear(self.hidden_size, self.z_dim, bias=True)  # fully-connected to output mu
+        self.fc2 = nn.Linear(288, self.z_dim)#nn.Linear(self.hidden_size, self.z_dim, bias=True)  # fully-connected to output logvar
+
+    def _get_conv_out(self, shape):
+        """
+        Helper function to automatically calculate the conv layers output.
+        """
+        o = self.conv3(self.conv2(self.conv1(torch.zeros(1, *shape))))
+        return int(np.prod(o.size()))
+    
+    # reparametrization trick
+
+    def bottleneck(self, h):
+        """
+        This function takes features from the encoder and outputs mu, log-var and a latent space vector z
+        :param h: features from the encoder
+        :return: z, mu, log-variance
+        """
+        mu, logvar = self.fc1(h), self.fc2(h)
+        # use the reparametrization trick as torch.normal(mu, logvar.exp()) is not differentiable
+        z = reparameterize(mu, logvar, device=self.device)
+        return z, mu, logvar
+
+    def forward(self, x):
+        """
+        This is the function called when doing the forward pass:
+        z, mu, logvar = VaeEncoder(X)
+        """
+        x = self.relu1(self.bn1(self.conv1(x)))
+        x = self.relu2(self.bn2(self.conv2(x)))
+        x = self.relu3(self.bn3(self.conv3(x)))
+        x = self.relu4(self.bn4(self.conv4(x)))
+        x = self.relu5(self.bn5(self.conv5(x)))
+        x = self.relu6(self.bn6(self.conv6(x)))
+        x = self.relu7(self.bn7(self.conv7(x)))
+        x = self.relu8(self.bn8(self.conv8(x)))
+        x = self.relu9(self.bn9(self.conv9(x)))
+        x = self.relu10(self.bn10(self.conv10(x)))
+        x = torch.flatten(x,1)
+        print("the shape of x is ",x.shape)
+        #x = torch.cat([x, labels], dim=1)
+        z, mu, logvar = self.bottleneck(x)
+        return z, mu, logvar
+
+  
+class VaeCnnDecoder_06_11(torch.nn.Module):
+    """
+       This class builds the decoder for the VAE
+       :param x_dim: input dimensions
+       :param hidden_size: hidden layer size
+       :param z_dim: latent dimensions
+       """
+
+    def __init__(self, z_dim):#, cond_dim = 10):
+        super(VaeCnnDecoder_06_11, self).__init__()
+        self.z_dim = z_dim
+        ### here need to concate label
+        ###block0
+        self.fc0 = nn.Linear(self.z_dim, 512) #100 * 4 * 4 * 4)
+        self.bn0 = nn.BatchNorm1d(512) #100 * 4 * 4 * 4)
+        
+        ###here need to reshape signal
+        ###block1
+        self.deconv1 = nn.ConvTranspose2d(in_channels=32,out_channels= 128, kernel_size=(3, 3), stride=(1,1), padding=0)
+        self.bn1 = nn.BatchNorm2d(128)
+        self.relu1 = nn.LeakyReLU()
+        
+        ###block2
+        self.deconv2 = nn.ConvTranspose2d(in_channels=128,out_channels= 128, kernel_size=(3, 3), stride=(1,1), padding=0)
+        self.bn2 = nn.BatchNorm2d(128)
+        self.relu2 = nn.LeakyReLU()
+
+        ###block2.5
+        self.deconv2_5 = nn.ConvTranspose2d(in_channels=128,out_channels= 128, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.bn2_5 = nn.BatchNorm2d(128)
+        self.relu2_5 = nn.LeakyReLU()
+        
+        ###block3
+        self.deconv3 = nn.ConvTranspose2d(in_channels=128,out_channels= 64, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.bn3 = nn.BatchNorm2d(64)
+        self.relu3 = nn.LeakyReLU()
+        
+        ###block4
+        self.deconv4 = nn.ConvTranspose2d(in_channels=64,out_channels= 64, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.bn4 = nn.BatchNorm2d(64)
+        self.relu4 = nn.LeakyReLU()
+        
+                
+        ###block5
+        self.deconv5 = nn.ConvTranspose2d(in_channels=64,out_channels= 64, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.bn5 = nn.BatchNorm2d(64)
+        self.relu5 = nn.LeakyReLU()
+        
+        ###block6
+        self.deconv6 = nn.ConvTranspose2d(in_channels=64,out_channels= 32, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.bn6 = nn.BatchNorm2d(32)
+        self.relu6 = nn.LeakyReLU()
+
+                
+        ###block7
+        self.deconv7 = nn.ConvTranspose2d(in_channels=32,out_channels= 16, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.bn7 = nn.BatchNorm2d(16)
+        self.relu7 = nn.LeakyReLU()
+
+        ###block8
+        self.deconv8 = nn.ConvTranspose2d(in_channels=16,out_channels= 8, kernel_size=(3, 3), stride=(1,1), padding=0)
+        self.bn8 = nn.BatchNorm2d(8)
+        self.relu8 = nn.LeakyReLU()
+
+
+        ###block9
+        self.deconv9 = nn.ConvTranspose2d(in_channels=8,out_channels= 3, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.sigmoid9 = nn.Sigmoid()
+
+        # self.decoder = nn.Sequential(nn.Linear(self.z_dim, self.hidden_size),
+        #                              nn.ReLU(),
+        #                              nn.Linear(self.hidden_size, self.x_dim),
+        #                              nn.Sigmoid())
+        # why we use sigmoid? becaue the pixel values of images are in [0,1] and sigmoid(x) does just that!
+        # if you don't work with images, you don't have to use that.
+
+
+    def forward(self, x):
+        """
+        This is the function called when doing the forward pass:
+        x_reconstruction = VaeDecoder(z)
+        """
+        #x = torch.cat([x,labels],dim=1)
+        x = self.bn0(self.fc0(x))
+        x = x.reshape(x.shape[0],32,4,4)
+        x = self.relu1(self.bn1(self.deconv1(x)))
+        x = self.relu2(self.bn2(self.deconv2(x)))
+        x = self.relu2_5(self.bn2_5(self.deconv2_5(x)))
+        x = self.relu3(self.bn3(self.deconv3(x)))
+        x = self.relu4(self.bn4(self.deconv4(x)))
+        x = self.relu5(self.bn5(self.deconv5(x)))
+        x = self.relu6(self.bn6(self.deconv6(x)))
+        x = self.relu7(self.bn7(self.deconv7(x)))
+        x = self.relu8(self.bn8(self.deconv8(x)))
+        x = self.sigmoid9(self.deconv9(x))
+        print("decode",x.shape)
+
+        
+        #x = self.decoder(x)
+        return x
+      
