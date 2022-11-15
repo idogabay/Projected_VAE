@@ -15,21 +15,27 @@ import our_datasets
 
 epochs = 500
 x_shape = (3,256,256)
-lr = 1e-6
-batch_size = 20
+lr = 5e-3
+batch_size = 100
 pics_path ="/home/user_118/datasets/Flowers/resized_images"
 weights_save_path = "/home/user_118/datasets/Flowers/weights"
 dataset_name = "flowers"
+
 transform = torchvision.transforms.Compose([
+    torchvision.transforms.ColorJitter(brightness = 0.2,contrast = 0.2,saturation = 0.2,hue = 0.1),
+    torchvision.transforms.RandomHorizontalFlip(p=0.5),
+    torchvision.transforms.RandomVerticalFlip(p=0.5),
+    torchvision.transforms.RandomRotation(degrees = 15,interpolation = torchvision.transforms.InterpolationMode.BILINEAR),
     torchvision.transforms.ToTensor()
-])
+    ])
+    
 dataset = our_datasets.Flowers_dataset(pics_path,transform)   #PokemonDataset(root=path, rgb=True)#'/content/drive/MyDrive/pokemon/pokemon', rgb=True)
 #poke_data = PokemonDataset(root='/content/drive/MyDrive/pokemon/pokemon', rgb=True)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
 #num_of_classes = 18
 loss_type = "bce"
 optimizer_type = "Adam"
-z_dim =100
+z_dim =200
 beta = 1
 device = set_device()
 model = Vae_cnn_1(z_dim=z_dim,x_shape=x_shape,device=device).to(device)

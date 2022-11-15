@@ -8,6 +8,8 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader, Dataset, ConcatDataset
 import torchvision
 import os
+from torchvision.models.feature_extraction import create_feature_extractor
+
 
 
 # the original implementation from the tutorial - leave untouched (for your own sake), copy-paste what you need to another cell
@@ -267,7 +269,7 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,loss_type
     else:
         vae_optim = torch.optim.SGD(params=model.parameters(), lr=lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=vae_optim,
-                mode='min',threshold=0.01,threshold_mode='rel',factor=0.8,patience=5,verbose = True)
+                mode='min',threshold=0.001,threshold_mode='rel',factor=0.5,patience=5,verbose = True)
 
     weights_name = dataset_name+"image_size"+str(x_shape[1])+"_beta_"+str(beta)+"_epochs_"+str(epochs)+"_z_dim_"+\
                     str(z_dim)+"_loss_type_"+str(loss_type)+\
@@ -280,7 +282,7 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,loss_type
     # recon_losses = []
     # kl_losses = []
     total_losses = []
-
+    print("start training")
     # here we go
     for epoch in range(epochs):
         epoch_start_time = time.time()
@@ -314,9 +316,9 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,loss_type
         total_losses.append(loss)
         # kl_losses.append(np.mean(batch_kl_losses))
         # recon_losses.append(np.mean(batch_recon_losses))
-        if epoch%50 ==0:
+        if (epoch+1)%50 ==0:
             print("epoch: {}| total_loss {:.5f}| epoch time: {:.3f} sec"\
-                .format(epoch,total_losses[-1], time.time() - epoch_start_time))
+                .format((epoch+1),total_losses[-1], time.time() - epoch_start_time))
     torch.save(model.state_dict(), weights_full_path)
     # return recon_losses,kl_losses,total_losses
     return total_losses,weights_full_path
@@ -364,51 +366,60 @@ class VaeCnnEncoder_06_11(torch.nn.Module):
         super(VaeCnnEncoder_06_11, self).__init__()
         self.z_dim = z_dim
         self.device = device
-        
+        drop_p = 0.1
         ###block1
         self.conv1 = nn.Conv2d(in_channels=3, out_channels=8, kernel_size=(3, 3), stride=(2, 2), padding=0)
         self.bn1 = nn.BatchNorm2d(num_features=8)
         self.relu1 = nn.LeakyReLU()
-        
+        self.dropout1 = nn.Dropout2d(p=drop_p)
+
         ###block2
         self.conv2 = nn.Conv2d(in_channels=8, out_channels=16, kernel_size=(3, 3), stride=(1, 1), padding=0)
         self.bn2 = nn.BatchNorm2d(num_features=16)
         self.relu2 = nn.LeakyReLU()
+        self.dropout2 = nn.Dropout2d(p=drop_p)
 
         ###block3
         self.conv3 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3, 3), stride=(2, 2), padding=0)
         self.bn3 = nn.BatchNorm2d(num_features=32)
         self.relu3 = nn.LeakyReLU()
+        self.dropout3 = nn.Dropout2d(p=drop_p)
         
         ###block4
         self.conv4 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=0)
         self.bn4 = nn.BatchNorm2d(num_features=64)
         self.relu4 = nn.LeakyReLU()
+        self.dropout4 = nn.Dropout2d(p=drop_p)
         
         ###block5
         self.conv5 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=0)
         self.bn5 = nn.BatchNorm2d(num_features=64)
         self.relu5 = nn.LeakyReLU()
+        self.dropout5 = nn.Dropout2d(p=drop_p)
 
         ###block6
         self.conv6 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(1, 1), padding=0)
         self.bn6 = nn.BatchNorm2d(num_features=64)
         self.relu6 = nn.LeakyReLU()
+        self.dropout6 = nn.Dropout2d(p=drop_p)
 
         ###block7
         self.conv7 = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=(3, 3), stride=(2, 2), padding=0)
         self.bn7 = nn.BatchNorm2d(num_features=64)
         self.relu7 = nn.LeakyReLU()
-
+        self.dropout7 = nn.Dropout2d(p=drop_p)
+        
         ###block8
         self.conv8 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(3, 3), stride=(1, 1), padding=0)
         self.bn8 = nn.BatchNorm2d(num_features=128)
         self.relu8 = nn.LeakyReLU()
+        self.dropout8 = nn.Dropout2d(p=drop_p)
         
         ###block9
         self.conv9 = nn.Conv2d(in_channels=128, out_channels=128, kernel_size=(3, 3), stride=(2, 2), padding=0)
         self.bn9 = nn.BatchNorm2d(num_features=128)
         self.relu9 = nn.LeakyReLU()
+        self.dropout9 = nn.Dropout2d(p=drop_p)
         
         ### block 10
         self.conv10 = nn.Conv2d(in_channels=128, out_channels=32, kernel_size=(3, 3), stride=(1, 1), padding=0)
@@ -445,18 +456,18 @@ class VaeCnnEncoder_06_11(torch.nn.Module):
         This is the function called when doing the forward pass:
         z, mu, logvar = VaeEncoder(X)
         """
-        x = self.relu1(self.bn1(self.conv1(x)))
-        x = self.relu2(self.bn2(self.conv2(x)))
-        x = self.relu3(self.bn3(self.conv3(x)))
-        x = self.relu4(self.bn4(self.conv4(x)))
-        x = self.relu5(self.bn5(self.conv5(x)))
-        x = self.relu6(self.bn6(self.conv6(x)))
-        x = self.relu7(self.bn7(self.conv7(x)))
-        x = self.relu8(self.bn8(self.conv8(x)))
-        x = self.relu9(self.bn9(self.conv9(x)))
+        x = self.dropout1(self.relu1(self.bn1(self.conv1(x))))
+        x = self.dropout2(self.relu2(self.bn2(self.conv2(x))))
+        x = self.dropout3(self.relu3(self.bn3(self.conv3(x))))
+        x = self.dropout4(self.relu4(self.bn4(self.conv4(x))))
+        x = self.dropout5(self.relu5(self.bn5(self.conv5(x))))
+        x = self.dropout6(self.relu6(self.bn6(self.conv6(x))))
+        x = self.dropout7(self.relu7(self.bn7(self.conv7(x))))
+        x = self.dropout8(self.relu8(self.bn8(self.conv8(x))))
+        x = self.dropout9(self.relu9(self.bn9(self.conv9(x))))
         x = self.relu10(self.bn10(self.conv10(x)))
         x = torch.flatten(x,1)
-        print("the shape of x is ",x.shape)
+        #print("the shape of x is ",x.shape)
         #x = torch.cat([x, labels], dim=1)
         z, mu, logvar = self.bottleneck(x)
         return z, mu, logvar
@@ -475,62 +486,73 @@ class VaeCnnDecoder_06_11(torch.nn.Module):
         self.z_dim = z_dim
         ### here need to concate label
         ###block0
+        drop_p = 0.1
         self.fc0 = nn.Linear(self.z_dim, 512) #100 * 4 * 4 * 4)
         self.bn0 = nn.BatchNorm1d(512) #100 * 4 * 4 * 4)
-        
+        self.relu0 = nn.LeakyReLU()
+        self.dropout0 = nn.Dropout1d(p=drop_p)
         ###here need to reshape signal
         ###block1
-        self.deconv1 = nn.ConvTranspose2d(in_channels=32,out_channels= 128, kernel_size=(3, 3), stride=(1,1), padding=0)
+        self.deconv1 = nn.ConvTranspose2d(in_channels=32,out_channels= 128, kernel_size=(3, 3), stride=(2,2), padding=0,output_padding=1)
         self.bn1 = nn.BatchNorm2d(128)
         self.relu1 = nn.LeakyReLU()
+        self.dropout1 = nn.Dropout2d(p=drop_p)
         
         ###block2
-        self.deconv2 = nn.ConvTranspose2d(in_channels=128,out_channels= 128, kernel_size=(3, 3), stride=(1,1), padding=0)
+        self.deconv2 = nn.ConvTranspose2d(in_channels=128,out_channels= 128, kernel_size=(3, 3), stride=(2,2), padding=2,output_padding=1)
         self.bn2 = nn.BatchNorm2d(128)
         self.relu2 = nn.LeakyReLU()
+        self.dropout2 = nn.Dropout2d(p=drop_p)
 
         ###block2.5
-        self.deconv2_5 = nn.ConvTranspose2d(in_channels=128,out_channels= 128, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.deconv2_5 = nn.ConvTranspose2d(in_channels=128,out_channels= 128, kernel_size=(3, 3), stride=(2, 2), padding=2,output_padding=1)
         self.bn2_5 = nn.BatchNorm2d(128)
         self.relu2_5 = nn.LeakyReLU()
+        self.dropout2_5 = nn.Dropout2d(p=drop_p)
         
         ###block3
-        self.deconv3 = nn.ConvTranspose2d(in_channels=128,out_channels= 64, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.deconv3 = nn.ConvTranspose2d(in_channels=128,out_channels= 64, kernel_size=(3, 3), stride=(2, 2), padding=2,output_padding=1)
         self.bn3 = nn.BatchNorm2d(64)
         self.relu3 = nn.LeakyReLU()
+        self.dropout3 = nn.Dropout2d(p=drop_p)
         
         ###block4
-        self.deconv4 = nn.ConvTranspose2d(in_channels=64,out_channels= 64, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.deconv4 = nn.ConvTranspose2d(in_channels=64,out_channels= 64, kernel_size=(3, 3),stride=(2, 2), padding=2,output_padding=1)
         self.bn4 = nn.BatchNorm2d(64)
         self.relu4 = nn.LeakyReLU()
+        self.dropout4 = nn.Dropout2d(p=drop_p)
         
                 
         ###block5
-        self.deconv5 = nn.ConvTranspose2d(in_channels=64,out_channels= 64, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.deconv5 = nn.ConvTranspose2d(in_channels=64,out_channels= 64, kernel_size=(3, 3), stride=(2, 2), padding=2,output_padding=1)
         self.bn5 = nn.BatchNorm2d(64)
         self.relu5 = nn.LeakyReLU()
+        self.dropout5 = nn.Dropout2d(p=drop_p)
         
         ###block6
-        self.deconv6 = nn.ConvTranspose2d(in_channels=64,out_channels= 32, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.deconv6 = nn.ConvTranspose2d(in_channels=64,out_channels= 32, kernel_size=(3, 3), stride=(1, 1), padding=2)
         self.bn6 = nn.BatchNorm2d(32)
         self.relu6 = nn.LeakyReLU()
+        self.dropout6 = nn.Dropout2d(p=drop_p)
 
                 
         ###block7
-        self.deconv7 = nn.ConvTranspose2d(in_channels=32,out_channels= 16, kernel_size=(3, 3), stride=(1, 1), padding=0)
+        self.deconv7 = nn.ConvTranspose2d(in_channels=32,out_channels= 16, kernel_size=(3, 3), stride=(1, 1), padding=2)
         self.bn7 = nn.BatchNorm2d(16)
         self.relu7 = nn.LeakyReLU()
+        self.dropout7 = nn.Dropout2d(p=drop_p)
 
         ###block8
-        self.deconv8 = nn.ConvTranspose2d(in_channels=16,out_channels= 8, kernel_size=(3, 3), stride=(1,1), padding=0)
+        self.deconv8 = nn.ConvTranspose2d(in_channels=16,out_channels= 8, kernel_size=(3, 3), stride=(1,1), padding=1)
         self.bn8 = nn.BatchNorm2d(8)
         self.relu8 = nn.LeakyReLU()
+        self.dropout8 = nn.Dropout2d(p=drop_p)
 
 
         ###block9
         self.deconv9 = nn.ConvTranspose2d(in_channels=8,out_channels= 3, kernel_size=(3, 3), stride=(1, 1), padding=0)
         self.sigmoid9 = nn.Sigmoid()
-
+        
         # self.decoder = nn.Sequential(nn.Linear(self.z_dim, self.hidden_size),
         #                              nn.ReLU(),
         #                              nn.Linear(self.hidden_size, self.x_dim),
@@ -545,21 +567,26 @@ class VaeCnnDecoder_06_11(torch.nn.Module):
         x_reconstruction = VaeDecoder(z)
         """
         #x = torch.cat([x,labels],dim=1)
-        x = self.bn0(self.fc0(x))
+        x = self.dropout0(self.relu0(self.bn0(self.fc0(x))))
         x = x.reshape(x.shape[0],32,4,4)
-        x = self.relu1(self.bn1(self.deconv1(x)))
-        x = self.relu2(self.bn2(self.deconv2(x)))
-        x = self.relu2_5(self.bn2_5(self.deconv2_5(x)))
-        x = self.relu3(self.bn3(self.deconv3(x)))
-        x = self.relu4(self.bn4(self.deconv4(x)))
-        x = self.relu5(self.bn5(self.deconv5(x)))
-        x = self.relu6(self.bn6(self.deconv6(x)))
-        x = self.relu7(self.bn7(self.deconv7(x)))
-        x = self.relu8(self.bn8(self.deconv8(x)))
+        x = self.dropout1(self.relu1(self.bn1(self.deconv1(x))))
+        x = self.dropout2(self.relu2(self.bn2(self.deconv2(x))))
+        x = self.dropout2_5(self.relu2_5(self.bn2_5(self.deconv2_5(x))))
+        x = self.dropout3(self.relu3(self.bn3(self.deconv3(x))))
+        x = self.dropout4(self.relu4(self.bn4(self.deconv4(x))))
+        x = self.dropout5(self.relu5(self.bn5(self.deconv5(x))))
+        x = self.dropout6(self.relu6(self.bn6(self.deconv6(x))))
+        x = self.dropout7(self.relu7(self.bn7(self.deconv7(x))))
+        x = self.dropout8(self.relu8(self.bn8(self.deconv8(x))))
         x = self.sigmoid9(self.deconv9(x))
-        print("decode",x.shape)
+        # print("decode",x.shape)
 
         
         #x = self.decoder(x)
         return x
-      
+
+
+
+
+#class ProjectedVAE():
+
