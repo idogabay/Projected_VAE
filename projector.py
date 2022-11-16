@@ -2,6 +2,39 @@ import torch
 import torch.nn as nn
 import timm
 from pg_modules.blocks import FeatureFusionBlock
+from torchvision.models.feature_extraction import get_graph_node_names,create_feature_extractor
+import torchvision
+
+def init_model(layers):
+    #layers_18 = ['layer1.0.bn2','layer1.1.bn2','layer2.0.bn1']
+    model = torchvision.models.resnet18(pretrained=True)
+    #print(model)
+    #nodes, _ = get_graph_node_names(model)
+    #print(nodes)
+    return create_feature_extractor(model,
+            return_nodes=layers)
+
+
+def get_conv_layer(in_ch,out_ch,kernel,stride,device):
+    conv_l = nn.Conv2d(in_ch,out_ch,kernel,stride=stride).to(device)
+    for param in conv_l.parameters():
+        param.requires_grad = False
+    return conv_l
+
+
+def reduce_dims(output,layers,device):
+    reduced = []
+    for layer in layers:
+        conv_layer = get_conv_layer(output[layer].shape[1],1,1,1,device)
+        reduced.append(conv_layer(output[layer]))
+    return reduced
+
+
+#output = model(torch.zeros(1,3,224,224).to(device))
+#for l in layers_18:
+#print(output[l].shape)
+# output = reduce_dims(output,layers)
+
 
 
 def _make_scratch_ccm(scratch, in_channels, cout, expand=False):

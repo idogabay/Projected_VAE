@@ -25,10 +25,10 @@ transform = torchvision.transforms.Compose([
     torchvision.transforms.ColorJitter(brightness = 0.2,contrast = 0.2,saturation = 0.2,hue = 0.1),
     torchvision.transforms.RandomHorizontalFlip(p=0.5),
     torchvision.transforms.RandomVerticalFlip(p=0.5),
-    torchvision.transforms.RandomRotation(degrees = 15,interpolation = torchvision.transforms.InterpolationMode.BILINEAR),
+    #torchvision.transforms.RandomRotation(degrees = 15,interpolation = torchvision.transforms.InterpolationMode.BILINEAR),
     torchvision.transforms.ToTensor()
     ])
-    
+
 dataset = our_datasets.Flowers_dataset(pics_path,transform)   #PokemonDataset(root=path, rgb=True)#'/content/drive/MyDrive/pokemon/pokemon', rgb=True)
 #poke_data = PokemonDataset(root='/content/drive/MyDrive/pokemon/pokemon', rgb=True)
 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
