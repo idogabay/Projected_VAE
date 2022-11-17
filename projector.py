@@ -5,14 +5,25 @@ from pg_modules.blocks import FeatureFusionBlock
 from torchvision.models.feature_extraction import get_graph_node_names,create_feature_extractor
 import torchvision
 
-def init_model(layers):
+
+
+def init_model(layers = []):
     #layers_18 = ['layer1.0.bn2','layer1.1.bn2','layer2.0.bn1']
-    model = torchvision.models.resnet18(pretrained=True)
-    #print(model)
+    #model = torchvision.models.resnet18(pretrained=True)
+    model = timm.create_model('tf_efficientnet_lite0', pretrained=True)
+    pretrained = nn.Module()
+    pretrained.layer0 = nn.Sequential(model.conv_stem,
+                     model.bn1,
+                     model.act1,
+                     *model.blocks[0:2])
+    pretrained.layer1 = nn.Sequential(*model.blocks[2:3])
+    pretrained.layer2 = nn.Sequential(*model.blocks[3:5])
+    pretrained.layer3 = nn.Sequential(*model.blocks[5:9])
+    print(model)
     #nodes, _ = get_graph_node_names(model)
     #print(nodes)
-    return create_feature_extractor(model,
-            return_nodes=layers)
+    #return create_feature_extractor(model,
+    #        return_nodes=layers)
 
 
 def get_conv_layer(in_ch,out_ch,kernel,stride,device):
@@ -65,7 +76,10 @@ def _make_scratch_csm(scratch, in_channels, cout, expand):
 
 def _make_efficientnet(model):
     pretrained = nn.Module()
-    pretrained.layer0 = nn.Sequential(model.conv_stem, model.bn1, model.act1, *model.blocks[0:2])
+    pretrained.layer0 = nn.Sequential(model.conv_stem,
+                     model.bn1,
+                     model.act1,
+                     *model.blocks[0:2])
     pretrained.layer1 = nn.Sequential(*model.blocks[2:3])
     pretrained.layer2 = nn.Sequential(*model.blocks[3:5])
     pretrained.layer3 = nn.Sequential(*model.blocks[5:9])
