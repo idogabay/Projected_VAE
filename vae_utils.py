@@ -9,8 +9,62 @@ from torch.utils.data import DataLoader, Dataset, ConcatDataset
 import torchvision
 import os
 from torchvision.models.feature_extraction import create_feature_extractor
+from torch.nn.utils import spectral_norm
+import networks_fastgan
+import dnnlib
+from networks_fastgan import Generator
+
+#from pg_modules.blocks import DownBlock, DownBlockPatch, conv2d
+from functools import partial
 
 
+def NormLayer(c, mode='batch'):
+    if mode == 'group':
+        return nn.GroupNorm(c//2, c)
+    elif mode == 'batch':
+        return nn.BatchNorm2d(c)
+
+
+def conv2d(*args, **kwargs):
+    return spectral_norm(nn.Conv2d(*args, **kwargs))
+
+class DownBlock(nn.Module):
+    def __init__(self, in_planes, out_planes, separable=False):
+        super().__init__()
+        if not separable:
+            self.main = nn.Sequential(
+                conv2d(in_planes, out_planes, 4, 2, 1),
+                NormLayer(out_planes),
+                nn.LeakyReLU(0.2, inplace=True),
+            )
+        else:
+            self.main = nn.Sequential(
+                SeparableConv2d(in_planes, out_planes, 3),
+                NormLayer(out_planes),
+                nn.LeakyReLU(0.2, inplace=True),
+                nn.AvgPool2d(2, 2),
+            )
+
+    def forward(self, feat):
+        return self.main(feat)
+
+
+
+class DownBlockPatch(nn.Module):
+    def __init__(self, in_planes, out_planes, separable=False):
+        super().__init__()
+        self.main = nn.Sequential(
+            DownBlock(in_planes, out_planes, separable),
+            conv2d(out_planes, out_planes, 1, 1, 0, bias=False),
+            NormLayer(out_planes),
+            nn.LeakyReLU(0.2, inplace=True),
+        )
+
+    def forward(self, feat):
+        return self.main(feat)
+
+
+### CSM
 
 # the original implementation from the tutorial - leave untouched (for your own sake), copy-paste what you need to another cell
 
@@ -172,19 +226,34 @@ class Vae_cnn_1(torch.nn.Module):
 
         #if self.cond_dim is not None:
         #x_dim+= cond_dim
-        self.encoder = VaeCnnEncoder_06_11(z_dim,x_shape, self.device)#,self.cond_dim)
+        self.encoder = encoder_pg(start_sz = x_shape[1], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
+        #VaeCnnEncoder_06_11(z_dim,x_shape, self.device)#,self.cond_dim)
         
         #if self.cond_dim is not None:
         #self.z_dim+=cond_dim
-        self.decoder = VaeCnnDecoder_06_11(self.z_dim)#,self.cond_dim)
+        '''self.decoder = networks_fastgan.Generator(
+            z_dim=z_dim,
+            c_dim=0,
+            w_dim=128,
+            img_resolution=256,
+            img_channels=3,
+            ngf=128,
+            cond=False,#0,
+            mapping_kwargs={},
+            synthesis_kwargs=dnnlib.EasyDict()
+            ) '''
+        self.decoder = Generator(synthesis_kwargs={'lite': False})#VaeCnnDecoder_06_11(self.z_dim)#,self.cond_dim)
+
+        # params:
+        # 
         
 
     def encode(self, x):
         z, mu, logvar = self.encoder(x)
         return z, mu, logvar
 
-    def decode(self, z):#,labels):
-        x = self.decoder(z)#,labels)
+    def decode(self, z, c):#,labels):
+        x = self.decoder(z, c)#,labels)
         return x
 
     def sample(self,num_samples=1):
@@ -206,7 +275,7 @@ class Vae_cnn_1(torch.nn.Module):
         # z = torch.randn(num_samples, self.z_dim).to(self.device)
         return self.decode(z)#,labels)
 
-    def forward(self, x):
+    def forward(self, x, c):
         """
         This is the function called when doing the forward pass:
         return x_recon, mu, logvar, z = Vae(X)
@@ -215,7 +284,7 @@ class Vae_cnn_1(torch.nn.Module):
         z, mu, logvar = self.encode(x)
         #if x_cond is not None:
         #z = torch.cat([z, x_cond], dim=1)
-        x_recon = self.decode(z)#,labels)
+        x_recon = self.decode(z, c)#,labels)
         #print("recon:",x.shape)
         #x_recon = self.decode(z)
         return x_recon, mu, logvar, z
@@ -234,7 +303,10 @@ def beta_loss_function(recon_x, x, mu, logvar, loss_type='bce',beta = 1):
     :return: VAE loss
     """
     if loss_type == 'mse':
-        recon_error = F.mse_loss(recon_x, x, reduction='sum')
+        recon_error = (x-recon_x)**2
+        #F.mse_loss(recon_x, x, reduction='sum')
+        #print(recon_error.shape[0])
+        recon_error = recon_error.sum() / recon_error.shape[0]
     elif loss_type == 'l1':
         recon_error = F.l1_loss(recon_x, x, reduction='sum')
     elif loss_type == 'bce':
@@ -248,14 +320,14 @@ def beta_loss_function(recon_x, x, mu, logvar, loss_type='bce',beta = 1):
     # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
     kl = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
     total_loss = (recon_error + beta*kl) / x.size(0)
-    return total_loss
+    return kl,recon_error,total_loss
 
 def set_device():
     if torch.cuda.is_available():
         torch.cuda.current_device()
     return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,loss_type,optimizer_type, weights_save_path,dataset_name) :
+def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,loss_type,optimizer_type, weights_save_path,dataset_name, c=None):
     # training
     # check if there is gpu avilable, if there is, use it
     # device = torch.device("cpu")
@@ -279,16 +351,18 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,loss_type
     #fname = os.path.join(path,fname)
     #print(fname)
     # save the losses from each epoch, we might want to plot it later
-    # recon_losses = []
-    # kl_losses = []
+    recon_losses = []
+    kl_losses = []
     total_losses = []
     print("start training")
     # here we go
+    min_loss = 999999999
+    last_epoch_min = 0
     for epoch in range(epochs):
         epoch_start_time = time.time()
         batch_total_losses = []
-        # batch_kl_losses = []
-        # batch_recon_losses = []
+        batch_kl_losses = []
+        batch_recon_losses = []
         for batch_i, batch in enumerate(dataloader):
             # forward pass
             # x = batch[0].to(device).view(-1, X_DIM) # just the images
@@ -297,10 +371,10 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,loss_type
             # x = torch.cat([x,x_cond ], dim=1)
             batch = batch.to(device)
             #labels = labels.to(device)
-            x_recon, mu, logvar, z = model(batch)
+            x_recon, mu, logvar, z = model(batch, c)
             # calculate the loss
             # recon_loss,kl,
-            total_loss = beta_loss_function(x_recon, batch, mu, logvar, loss_type=loss_type, beta=beta)#.permute(0, 2, 3, 1)
+            kl,recon,total_loss = beta_loss_function(x_recon, batch, mu, logvar, loss_type=loss_type, beta=beta)#.permute(0, 2, 3, 1)
             # optimization (same 3 steps everytime)
             vae_optim.zero_grad()
             total_loss.backward()
@@ -309,19 +383,28 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,loss_type
             # print(total_loss)
             batch_total_losses.append(total_loss.cpu().item())
             # print(total_loss.cpu().item())
-            # batch_kl_losses.append(kl)
-            # batch_recon_losses.append(recon_loss)
+            batch_kl_losses.append(kl.cpu().item())
+            batch_recon_losses.append(recon.cpu().item())
+        
         loss = np.mean(batch_total_losses)
+        if loss<min_loss:
+            min_loss = batch_total_losses[-1]
+            last_epoch_min = epoch
+            torch.save(model.state_dict(), weights_full_path)
+            print("new min loss:",min_loss,"epoch:",epoch)
         scheduler.step(loss)
         total_losses.append(loss)
-        # kl_losses.append(np.mean(batch_kl_losses))
-        # recon_losses.append(np.mean(batch_recon_losses))
+        kl_losses.append(np.mean(batch_kl_losses))
+        recon_losses.append(np.mean(batch_recon_losses))
         if (epoch+1)%50 ==0:
-            print("epoch: {}| total_loss {:.5f}| epoch time: {:.3f} sec"\
-                .format((epoch+1),total_losses[-1], time.time() - epoch_start_time))
-    torch.save(model.state_dict(), weights_full_path)
+            print("epoch: {}| kl {:.3f}| recon {:.3f} |total_loss {:.3f}| epoch time: {:.3f} sec"\
+                .format((epoch+1),kl_losses[-1],recon_losses[-1],total_losses[-1], time.time() - epoch_start_time))
+        if epoch-last_epoch_min > 50:
+            print("stop improving. breaking loop")
+            break
+    #torch.save(model.state_dict(), weights_full_path)
     # return recon_losses,kl_losses,total_losses
-    return total_losses,weights_full_path
+    return kl_losses,recon_losses,total_losses,weights_full_path
 
     
 def plot_loss(losses,title):
@@ -587,6 +670,73 @@ class VaeCnnDecoder_06_11(torch.nn.Module):
 
 
 
+class encoder_pg(nn.Module):
+    def __init__(self, nc=None, ndf=None, start_sz=256, end_sz=8, head=None, separable=False, patch=False,z_dim=100,device='cpu'):
+        super().__init__()
+        self.device = device
+        #channel_dict = {4: 512, 8: 512, 16: 256, 32: 128, 64: 64, 128: 64,
+        #                256: 32, 512: 16, 1024: 8}
+        # i cahnged 256 to 3 because:
+        # RuntimeError: Given groups=1, weight of size [64, 32, 4, 4], expected input[100, 3, 256, 256] to have 32 channels, but got 3 channels instead
+        channel_dict = {4: 512, 8: 512, 16: 256, 32: 128, 64: 64, 128: 64,
+                        256: 3, 512: 16, 1024: 8}
+        self.z_dim = z_dim
+        # interpolate for start sz that are not powers of two
+        if start_sz not in channel_dict.keys():
+            sizes = np.array(list(channel_dict.keys()))
+            start_sz = sizes[np.argmin(abs(sizes - start_sz))]
+        self.start_sz = start_sz
+
+        # if given ndf, allocate all layers with the same ndf
+        if ndf is None:
+            nfc = channel_dict
+        else:
+            nfc = {k: ndf for k, v in channel_dict.items()}
+
+        # for feature map discriminators with nfc not in channel_dict
+        # this is the case for the pretrained backbone (midas.pretrained)
+        if nc is not None and head is None:
+            nfc[start_sz] = nc
+
+        layers = []
+
+        # Head if the initial input is the full modality
+        if head:
+            layers += [conv2d(nc, nfc[256], 3, 1, 1, bias=False),
+                       nn.LeakyReLU(0.2, inplace=True)]
+
+        # Down Blocks
+        DB = partial(DownBlockPatch, separable=separable) if patch else partial(DownBlock, separable=separable)
+        while start_sz > end_sz:
+            layers.append(DB(nfc[start_sz],  nfc[start_sz//2]))
+            start_sz = start_sz // 2
+
+        layers.append(conv2d(in_channels = nfc[end_sz], out_channels = 8, kernel_size =4, padding=0, bias=False))
+
+        ### i added 
+        #net= 
+        #x = torch.flatten(net(x),1)
+        self.main = nn.Sequential(*layers)
+
+        self.fc1 = nn.Linear(z_dim, self.z_dim)#nn.Linear(self.hidden_size, self.z_dim, bias=True)  # fully-connected to output mu
+        self.fc2 = nn.Linear(z_dim, self.z_dim)#nn.Linear(self.hidden_size, self.z_dim, bias=True)  # fully-connected to output logvar
+   
+    def bottleneck(self, h):
+        """
+        This function takes features from the encoder and outputs mu, log-var and a latent space vector z
+        :param h: features from the encoder
+        :return: z, mu, log-variance
+        """ 
+        mu, logvar = self.fc1(h), self.fc2(h)
+        # use the reparametrization trick as torch.normal(mu, logvar.exp()) is not differentiable
+        z = reparameterize(mu, logvar, device=self.device)
+        return z, mu, logvar
+
+
+    def forward(self, x):
+    #c):
+        x = torch.flatten(self.main(x),1)
+        return self.bottleneck(x)
 
 #class ProjectedVAE():
 
