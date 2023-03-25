@@ -252,8 +252,8 @@ class Vae_cnn_1(torch.nn.Module):
         z, mu, logvar = self.encoder(x)
         return z, mu, logvar
 
-    def decode(self, z, c):#,labels):
-        x = self.decoder(z, c)#,labels)
+    def decode(self, z):#, c):#,labels):
+        x = self.decoder(z)#, c)#,labels)
         return x
 
     def sample(self,num_samples=1):
@@ -275,7 +275,7 @@ class Vae_cnn_1(torch.nn.Module):
         # z = torch.randn(num_samples, self.z_dim).to(self.device)
         return self.decode(z)#,labels)
 
-    def forward(self, x, c):
+    def forward(self, x):#, c):
         """
         This is the function called when doing the forward pass:
         return x_recon, mu, logvar, z = Vae(X)
@@ -284,7 +284,7 @@ class Vae_cnn_1(torch.nn.Module):
         z, mu, logvar = self.encode(x)
         #if x_cond is not None:
         #z = torch.cat([z, x_cond], dim=1)
-        x_recon = self.decode(z, c)#,labels)
+        x_recon = self.decode(z)#, c)#,labels)
         #print("recon:",x.shape)
         #x_recon = self.decode(z)
         return x_recon, mu, logvar, z
@@ -327,7 +327,8 @@ def set_device():
         torch.cuda.current_device()
     return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,loss_type,optimizer_type, weights_save_path,dataset_name, c=None):
+def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
+                  loss_type,optimizer_type, weights_save_path,dataset_name, c=None):
     # training
     # check if there is gpu avilable, if there is, use it
     # device = torch.device("cpu")
@@ -343,10 +344,11 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,loss_type
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=vae_optim,
                 mode='min',threshold=0.001,threshold_mode='rel',factor=0.5,patience=5,verbose = True)
 
-    weights_name = dataset_name+"image_size"+str(x_shape[1])+"_beta_"+str(beta)+"_epochs_"+str(epochs)+"_z_dim_"+\
+    weights_name = dataset_name+"_image_size_"+str(x_shape[1])+"_beta_"+str(beta)+"_epochs_"+str(epochs)+"_z_dim_"+\
                     str(z_dim)+"_loss_type_"+str(loss_type)+\
                         "_optimizer_type_"+str(optimizer_type)+".pth"
     weights_full_path = os.path.join(weights_save_path,weights_name)
+    #print(weights_full_path)
     #path = os.path.join("..","data")
     #fname = os.path.join(path,fname)
     #print(fname)
@@ -364,6 +366,7 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,loss_type
         batch_kl_losses = []
         batch_recon_losses = []
         for batch_i, batch in enumerate(dataloader):
+            #print("in training loop",str(epoch),str(batch_i))
             # forward pass
             # x = batch[0].to(device).view(-1, X_DIM) # just the images
             # x = batch.to(device).view(-1, X_DIM) # just the images
@@ -371,7 +374,8 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,loss_type
             # x = torch.cat([x,x_cond ], dim=1)
             batch = batch.to(device)
             #labels = labels.to(device)
-            x_recon, mu, logvar, z = model(batch, c)
+            x_recon, mu, logvar, z = model(batch)#, c)
+            print("holaaaaaaaaaaaaaaaaaaaaa")
             # calculate the loss
             # recon_loss,kl,
             kl,recon,total_loss = beta_loss_function(x_recon, batch, mu, logvar, loss_type=loss_type, beta=beta)#.permute(0, 2, 3, 1)
