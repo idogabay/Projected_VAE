@@ -39,7 +39,7 @@ def main():
     #num_of_classes = 18
     loss_type = "mse"
     optimizer_type = "Adam"
-    z_dim =200
+    z_dim =256
     beta = 0.01
     device = set_device()
     #print("holaaaaa")

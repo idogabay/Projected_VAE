@@ -722,8 +722,8 @@ class encoder_pg(nn.Module):
         #x = torch.flatten(net(x),1)
         self.main = nn.Sequential(*layers)
 
-        self.fc1 = nn.Linear(z_dim, self.z_dim)#nn.Linear(self.hidden_size, self.z_dim, bias=True)  # fully-connected to output mu
-        self.fc2 = nn.Linear(z_dim, self.z_dim)#nn.Linear(self.hidden_size, self.z_dim, bias=True)  # fully-connected to output logvar
+        self.fc1 = nn.Linear(200, self.z_dim)#nn.Linear(self.hidden_size, self.z_dim, bias=True)  # fully-connected to output mu
+        self.fc2 = nn.Linear(200, self.z_dim)#nn.Linear(self.hidden_size, self.z_dim, bias=True)  # fully-connected to output logvar
    
     def bottleneck(self, h):
         """
@@ -740,6 +740,10 @@ class encoder_pg(nn.Module):
     def forward(self, x):
     #c):
         x = torch.flatten(self.main(x),1)
+        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+        print(x.shape)
+        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+
         return self.bottleneck(x)
 
 #class ProjectedVAE():
