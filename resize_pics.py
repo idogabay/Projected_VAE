@@ -33,8 +33,8 @@ def resize_folder(pics_root_dir,resized_pics_dir,width = 224,height = 224):
             new_image.save(new_image_path)
 # resize all the pics in the folder
 def main():
-    base_path = "/home/user_118/datasets/Flowers"
-    pics_root_dir = os.path.join(base_path,"images") #src_folder
+    base_path = "/home/ido/datasets/projected_vae/pokemon"
+    pics_root_dir = os.path.join(base_path,"img") #src_folder
     pics_new_root_dir= os.path.join(base_path,"resized_images") #dst_folder
     #xml_root_folder = "/home/picky/Documents/datasets/exp_date/30.8.22/labels (copy)" #labels_folder
     width = 256

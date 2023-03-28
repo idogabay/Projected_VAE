@@ -149,7 +149,7 @@ class FastganSynthesisCond(nn.Module):
 class Generator(nn.Module):
     def __init__(
         self,
-        z_dim=256,
+        z_dim=256*4,
         c_dim=0,
         w_dim=0,
         img_resolution=256,

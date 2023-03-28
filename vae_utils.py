@@ -13,6 +13,8 @@ from torch.nn.utils import spectral_norm
 import networks_fastgan
 import dnnlib
 from networks_fastgan import Generator
+from PIL import Image
+import projector
 
 #from pg_modules.blocks import DownBlock, DownBlockPatch, conv2d
 from functools import partial
@@ -375,7 +377,7 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
             batch = batch.to(device)
             #labels = labels.to(device)
             x_recon, mu, logvar, z = model(batch)#, c)
-            print("holaaaaaaaaaaaaaaaaaaaaa")
+            #print("holaaaaaaaaaaaaaaaaaaaaa")
             # calculate the loss
             # recon_loss,kl,
             kl,recon,total_loss = beta_loss_function(x_recon, batch, mu, logvar, loss_type=loss_type, beta=beta)#.permute(0, 2, 3, 1)
@@ -400,7 +402,7 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
         total_losses.append(loss)
         kl_losses.append(np.mean(batch_kl_losses))
         recon_losses.append(np.mean(batch_recon_losses))
-        if (epoch+1)%50 ==0:
+        if (epoch+1)%10 ==0:
             print("epoch: {}| kl {:.3f}| recon {:.3f} |total_loss {:.3f}| epoch time: {:.3f} sec"\
                 .format((epoch+1),kl_losses[-1],recon_losses[-1],total_losses[-1], time.time() - epoch_start_time))
         if epoch-last_epoch_min > 50:
@@ -429,13 +431,17 @@ def generate_samples(num_of_samples,model,weights_path):
     model.eval()
     with torch.no_grad():
         samples = model.sample(num_of_samples)
-        fig = plt.figure(figsize=(20 ,12))
+        transform = torchvision.transforms.ToPILImage()
         for i,sample in enumerate(samples):
-            ax = fig.add_subplot(3, 6, i + 1)
-            sample = sample.permute(1, 2, 0).data.cpu().numpy()
-            ax.imshow(sample)
-            ax.set_axis_off()
-        plt.show()
+            img = transform(sample)
+            img = img.save("./output_images/"+str(i)+".jpg")
+        # fig = plt.figure(figsize=(20 ,12))
+        # for i,sample in enumerate(samples):
+        #     ax = fig.add_subplot(3, 6, i + 1)
+        #     sample = sample.permute(1, 2, 0).data.cpu().numpy()
+        #     ax.imshow(sample)
+        #     ax.set_axis_off()
+        # plt.show()
         
     print("done")
 
@@ -740,11 +746,106 @@ class encoder_pg(nn.Module):
     def forward(self, x):
     #c):
         x = torch.flatten(self.main(x),1)
-        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-        print(x.shape)
-        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+        #print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+        #print(x.shape)
+        #print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
 
         return self.bottleneck(x)
 
-#class ProjectedVAE():
+
+
+
+
+
+
+
+
+# TODO: insert projected part int the vae for the purpose of saving the weights as one model.
+
+
+
+class ProjectedVAE():
+    def __init__(self, z_dim,outs_shape, device):
+        super(ProjectedVAE, self).__init__()
+        self.device = device
+        self.z_dim = z_dim
+        #self.cond_dim = cond_dim
+
+        #if self.cond_dim is not None:
+        #x_dim+= cond_dim
+        self.encoder0 = encoder_pg(start_sz = outs_shape[0], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
+        self.encoder1 = encoder_pg(start_sz = outs_shape[1], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
+        self.encoder2 = encoder_pg(start_sz = outs_shape[2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
+        self.encoder3 = encoder_pg(start_sz = outs_shape[3], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
+
+        #VaeCnnEncoder_06_11(z_dim,x_shape, self.device)#,self.cond_dim)
+        
+        #if self.cond_dim is not None:
+        #self.z_dim+=cond_dim
+        '''self.decoder = networks_fastgan.Generator(
+            z_dim=z_dim,
+            c_dim=0,
+            w_dim=128,
+            img_resolution=256,
+            img_channels=3,
+            ngf=128,
+            cond=False,#0,
+            mapping_kwargs={},
+            synthesis_kwargs=dnnlib.EasyDict()
+            ) '''
+        self.decoder = Generator(synthesis_kwargs={'lite': False})#VaeCnnDecoder_06_11(self.z_dim)#,self.cond_dim)
+
+        # params:
+        # 
+        
+
+    def encode(self, outs):
+
+        z_0, mu_0, logvar_0 = self.encoder0(outs['0'])
+        z_1, mu_1, logvar_1 = self.encoder1(outs['1'])
+        z_2, mu_2, logvar_2 = self.encoder2(outs['2'])
+        z_3, mu_3, logvar_3 = self.encoder3(outs['3'])
+        
+        z = torch.concat([z_0,z_1,z_2,z_3])
+        mu = torch.concat([mu_0,mu_1,mu_2,mu_3])
+        logvar = torch.concat([logvar_0,logvar_1,logvar_2,logvar_3])
+        return z, mu, logvar
+
+    def decode(self, z):#, c):#,labels):
+        x = self.decoder(z)#, c)#,labels)
+        return x
+
+    def sample(self,num_samples=1):
+        """
+        This functions generates new data by sampling random variables and decoding them.
+        Vae.sample() actually generatess new data!
+        Sample z ~ N(0,1)
+        """
+        #if self.cond_dim is not None:
+        z = torch.randn(num_samples, self.z_dim).to(self.device)
+        #if x_cond is not None:
+        #print(self.z_dim)
+        #labels = labels_to_one_hots(labels, self.cond_dim).to(device) ###check if neseccery 
+        #else:
+        #     label = torch.randint(0,9, num_samples)
+        #     label = labels_to_one_hots(label, self.cond_dim).to(device)
+        #z = torch.cat([z, labels], dim=1)
+        # #else:
+        # z = torch.randn(num_samples, self.z_dim).to(self.device)
+        return self.decode(z)#,labels)
+
+    def forward(self, outs):#, c):
+        """
+        This is the function called when doing the forward pass:
+        return x_recon, mu, logvar, z = Vae(X)
+        """
+        #print("input:",x.shape)
+        z, mu, logvar = self.encode(outs)
+        #if x_cond is not None:
+        #z = torch.cat([z, x_cond], dim=1)
+        x_recon = self.decode(z)#, c)#,labels)
+        #print("recon:",x.shape)
+        #x_recon = self.decode(z)
+        return x_recon, mu, logvar, z
+
 
