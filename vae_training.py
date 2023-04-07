@@ -17,10 +17,11 @@ def main():
     G_kwargs = {'class_name': 'pg_modules.networks_....Generator', 'cond': False, 'synthesis_kwargs': {'lite': False}}
     G_opt_kwargs = {'class_name': 'torch.optim.Adam', 'betas': [0, 0.99], 'eps': 1e-08, 'lr': 0.0002}
     '''
+    torch.set_float32_matmul_precision('high')
     epochs = 500
     x_shape = (3,256,256)
     lr = 1e-3
-    batch_size = 40
+    batch_size = 35
     pics_path ="/home/ido/datasets/projected_vae/pokemon/resized_images"
     weights_save_path = "/home/ido/datasets/projected_vae/pokemon/weights"
     dataset_name = "pokemon"
@@ -42,14 +43,19 @@ def main():
     optimizer_type = "Adam"
     z_dim =256
     beta = 0.01
+    projected = True
     device = set_device()
     #print("holaaaaa")
-    model = Vae_cnn_1(z_dim=z_dim,x_shape=x_shape,device=device).to(device)
+    #model = Vae_cnn_1(z_dim=z_dim,x_shape=x_shape,device=device).to(device)
 
     ## projected ##
-    outs_shape = [256,256,256,256]
-    vae_model = ProjectedVAE(z_dim=z_dim,outs_shape=outs_shape,device=device).to(device)
-    projection_model = F_RandomProj()
+    outs_shape = {"0":[40, 64, 128, 128],
+                  "1":[40, 64, 64, 64],
+                  "2":[40, 128, 32, 32],
+                  "3":[40, 256, 16, 16]
+                  }
+    model = ProjectedVAE(z_dim=z_dim,outs_shape=outs_shape,device=device,projected=projected)#.to(device)
+    model = torch.compile(model.to(device)).to(device)
     ###############
 
     all_total_losses = 0
@@ -64,8 +70,8 @@ def main():
     # plot_loss(recon_losses,title)
     # title = "total"
     # plot_loss(total_losses,title)
-    #weights_path = '/home/ido/datasets/projected_vae/pokemon/weights/pokemon_image_size_256_beta_0.01_epochs_500_z_dim_256_loss_type_mse_optimizer_type_Adam.pth'
-    #generate_samples(num_of_samples=100,model=model,weights_path=weights_path)
+    # weights_path = '/home/ido/datasets/projected_vae/pokemon/weights/pokemon_image_size_256_beta_0.01_epochs_500_z_dim_256_loss_type_mse_optimizer_type_Adam.pth'
+    # generate_samples(num_of_samples=100,model=model,weights_path=weights_path)
 
 
 

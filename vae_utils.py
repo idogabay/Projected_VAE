@@ -14,7 +14,8 @@ import networks_fastgan
 import dnnlib
 from networks_fastgan import Generator
 from PIL import Image
-import projector
+from projector import F_RandomProj
+
 
 #from pg_modules.blocks import DownBlock, DownBlockPatch, conv2d
 from functools import partial
@@ -293,7 +294,7 @@ class Vae_cnn_1(torch.nn.Module):
 
 
 
-def beta_loss_function(recon_x, x, mu, logvar, loss_type='bce',beta = 1):
+def beta_loss_function(recon_x, x, mu, logvar, loss_type='bce',beta = 1,projected = False):
     """
     This function calculates the loss of the VAE.
     loss = reconstruction_loss - 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
@@ -305,6 +306,11 @@ def beta_loss_function(recon_x, x, mu, logvar, loss_type='bce',beta = 1):
     :return: VAE loss
     """
     if loss_type == 'mse':
+        # print("CCCCCCCCCCCCCCCCCCC")
+        # print(x.shape)
+        # print(recon_x.shape)
+        # print("CCCCCCCCCCCCCCCCCCC")
+
         recon_error = (x-recon_x)**2
         #F.mse_loss(recon_x, x, reduction='sum')
         #print(recon_error.shape[0])
@@ -764,20 +770,24 @@ class encoder_pg(nn.Module):
 
 
 
-class ProjectedVAE():
-    def __init__(self, z_dim,outs_shape, device):
+class ProjectedVAE(nn.Module):
+    def __init__(self, z_dim,outs_shape,device, projected):
         super(ProjectedVAE, self).__init__()
+        self.projected = projected
         self.device = device
         self.z_dim = z_dim
+        self.outs_shape = outs_shape
         #self.cond_dim = cond_dim
 
         #if self.cond_dim is not None:
         #x_dim+= cond_dim
-        self.encoder0 = encoder_pg(start_sz = outs_shape[0], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
-        self.encoder1 = encoder_pg(start_sz = outs_shape[1], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
-        self.encoder2 = encoder_pg(start_sz = outs_shape[2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
-        self.encoder3 = encoder_pg(start_sz = outs_shape[3], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
-
+        self.encoder0 = encoder_pg(start_sz = outs_shape["0"][2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
+        self.encoder1 = encoder_pg(start_sz = outs_shape["1"][2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
+        self.encoder2 = encoder_pg(start_sz = outs_shape["2"][2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
+        self.encoder3 = encoder_pg(start_sz = outs_shape["3"][2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
+        self.projector = F_RandomProj().eval()
+        # for param in self.projector.features.parameters():
+        #     param.requires_grad = False
         #VaeCnnEncoder_06_11(z_dim,x_shape, self.device)#,self.cond_dim)
         
         #if self.cond_dim is not None:
@@ -793,22 +803,51 @@ class ProjectedVAE():
             mapping_kwargs={},
             synthesis_kwargs=dnnlib.EasyDict()
             ) '''
-        self.decoder = Generator(synthesis_kwargs={'lite': False})#VaeCnnDecoder_06_11(self.z_dim)#,self.cond_dim)
+        self.decoder = Generator(projected = self.projected,synthesis_kwargs={'lite': False})#VaeCnnDecoder_06_11(self.z_dim)#,self.cond_dim)
 
         # params:
         # 
         
+    def project(self,x):
+        outs = self.projector(x)
+        return outs
 
     def encode(self, outs):
-
+        #for i in range(4):
+            # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+            # print(i)
+            # print(outs[str(i)].shape)
+            # print("AAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+        #print("aaaaaaaaaaaaaaaaaaaaaa")
         z_0, mu_0, logvar_0 = self.encoder0(outs['0'])
-        z_1, mu_1, logvar_1 = self.encoder1(outs['1'])
-        z_2, mu_2, logvar_2 = self.encoder2(outs['2'])
-        z_3, mu_3, logvar_3 = self.encoder3(outs['3'])
+        # print(z_0.shape)
+        # print(mu_0.shape)
+        # print(logvar_0.shape)
+        # print("aaaaaaaaaaaaaaaaaaaaaa")
         
-        z = torch.concat([z_0,z_1,z_2,z_3])
-        mu = torch.concat([mu_0,mu_1,mu_2,mu_3])
-        logvar = torch.concat([logvar_0,logvar_1,logvar_2,logvar_3])
+        # print("bbbbbbbbbbbbbbbbbbbbbbbbbb")
+        z_1, mu_1, logvar_1 = self.encoder1(outs['1'])
+        # print(z_0.shape)
+        # print(mu_0.shape)
+        # print(logvar_0.shape)
+        # print("bbbbbbbbbbbbbbbbbbbbbbbbbb")
+
+        # print("ccccccccccccccccccccc")
+        z_2, mu_2, logvar_2 = self.encoder2(outs['2'])
+        # print(z_0.shape)
+        # print(mu_0.shape)
+        # print(logvar_0.shape)
+        # print("ccccccccccccccccccccc")
+
+        #print("dddddddddddddddddddd")
+        z_3, mu_3, logvar_3 = self.encoder3(outs['3'])
+        # print(z_0.shape)
+        # print(mu_0.shape)
+        # print(logvar_0.shape)
+        # print("dddddddddddddddddddd")
+        z = torch.cat([z_0,z_1,z_2,z_3],dim=1)
+        mu = torch.cat([mu_0,mu_1,mu_2,mu_3],dim=1)
+        logvar = torch.cat([logvar_0,logvar_1,logvar_2,logvar_3],dim=1)
         return z, mu, logvar
 
     def decode(self, z):#, c):#,labels):
@@ -822,7 +861,10 @@ class ProjectedVAE():
         Sample z ~ N(0,1)
         """
         #if self.cond_dim is not None:
-        z = torch.randn(num_samples, self.z_dim).to(self.device)
+        multiplyer = 1
+        if self.projected:
+            multiplyer = 4
+        z = torch.randn(num_samples, multiplyer*self.z_dim).to(self.device)
         #if x_cond is not None:
         #print(self.z_dim)
         #labels = labels_to_one_hots(labels, self.cond_dim).to(device) ###check if neseccery 
@@ -834,16 +876,22 @@ class ProjectedVAE():
         # z = torch.randn(num_samples, self.z_dim).to(self.device)
         return self.decode(z)#,labels)
 
-    def forward(self, outs):#, c):
+    def forward(self, x):#, c):
         """
         This is the function called when doing the forward pass:
         return x_recon, mu, logvar, z = Vae(X)
         """
         #print("input:",x.shape)
+        with torch.no_grad():
+            outs = self.project(x)
+        for i in range(4):
+            outs[str(i)].requires_grad = True
+            #print(outs[str(i)].requires_grad)
         z, mu, logvar = self.encode(outs)
         #if x_cond is not None:
         #z = torch.cat([z, x_cond], dim=1)
         x_recon = self.decode(z)#, c)#,labels)
+        #print(x_recon.requires_grad)
         #print("recon:",x.shape)
         #x_recon = self.decode(z)
         return x_recon, mu, logvar, z

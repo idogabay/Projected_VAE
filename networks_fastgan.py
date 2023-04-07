@@ -149,7 +149,8 @@ class FastganSynthesisCond(nn.Module):
 class Generator(nn.Module):
     def __init__(
         self,
-        z_dim=256*4,
+        projected = False,
+        z_dim=256,#*4,
         c_dim=0,
         w_dim=0,
         img_resolution=256,
@@ -160,7 +161,12 @@ class Generator(nn.Module):
         synthesis_kwargs={}
     ):
         super().__init__()
-        self.z_dim = z_dim
+        self.projected = projected
+        if self.projected:
+            self.z_dim = z_dim*4
+        else:
+            self.z_dim = z_dim
+        
         self.c_dim = c_dim
         self.w_dim = w_dim
         self.img_resolution = img_resolution
@@ -169,7 +175,7 @@ class Generator(nn.Module):
         # Mapping and Synthesis Networks
         self.mapping = DummyMapping()  # to fit the StyleGAN API
         Synthesis = FastganSynthesis#FastganSynthesisCond if cond else FastganSynthesis
-        self.synthesis = Synthesis(ngf=ngf, z_dim=z_dim, nc=img_channels, img_resolution=img_resolution, **synthesis_kwargs)
+        self.synthesis = Synthesis(ngf=ngf, z_dim=self.z_dim, nc=img_channels, img_resolution=img_resolution, **synthesis_kwargs)
 
     def forward(self, z):#, c):#, **kwargs):
         w = self.mapping(z)#, c)
