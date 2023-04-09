@@ -336,7 +336,8 @@ def set_device():
     return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
-                  loss_type,optimizer_type, weights_save_path,dataset_name, c=None):
+                  loss_type,optimizer_type, weights_save_path,dataset_name,
+                  current_time,json_data, c=None):
     # training
     # check if there is gpu avilable, if there is, use it
     # device = torch.device("cpu")
@@ -352,10 +353,13 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=vae_optim,
                 mode='min',threshold=0.001,threshold_mode='rel',factor=0.5,patience=5,verbose = True)
 
-    weights_name = dataset_name+"_image_size_"+str(x_shape[1])+"_beta_"+str(beta)+"_epochs_"+str(epochs)+"_z_dim_"+\
+    weights_name = dataset_name+"_"+str(current_time)+".pth"
+    
+    """dataset_name+"_image_size_"+str(x_shape[1])+"_beta_"+str(beta)+"_epochs_"+str(epochs)+"_z_dim_"+\
                     str(z_dim)+"_loss_type_"+str(loss_type)+\
-                        "_optimizer_type_"+str(optimizer_type)+".pth"
+                        "_optimizer_type_"+str(optimizer_type)+"_lr_"+str(lr)+".pth"""
     weights_full_path = os.path.join(weights_save_path,weights_name)
+    print("Starting :","\n",json_data)
     #print(weights_full_path)
     #path = os.path.join("..","data")
     #fname = os.path.join(path,fname)
@@ -364,10 +368,12 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
     recon_losses = []
     kl_losses = []
     total_losses = []
+    lr_history = []
     print("start training")
     # here we go
     min_loss = 999999999
     last_epoch_min = 0
+    end_epoch = 0
     for epoch in range(epochs):
         epoch_start_time = time.time()
         batch_total_losses = []
@@ -380,6 +386,10 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
             # x = batch.to(device).view(-1, X_DIM) # just the images
             # x_cond = labels_to_one_hots(labels, num_of_classes).to(device)
             # x = torch.cat([x,x_cond ], dim=1)
+            current_lr = 0
+            for param_group in vae_optim.param_groups:
+                current_lr = param_group['lr']
+            lr_history.append(current_lr)
             batch = batch.to(device)
             #labels = labels.to(device)
             x_recon, mu, logvar, z = model(batch)#, c)
@@ -412,11 +422,14 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
             print("epoch: {}| kl {:.3f}| recon {:.3f} |total_loss {:.3f}| epoch time: {:.3f} sec"\
                 .format((epoch+1),kl_losses[-1],recon_losses[-1],total_losses[-1], time.time() - epoch_start_time))
         if epoch-last_epoch_min > 50:
-            print("stop improving. breaking loop")
+            print("stop improving at epoch:",last_epoch_min,".\nbreaking loop")
+            end_epoch = last_epoch_min
             break
+        end_epoch = epoch
     #torch.save(model.state_dict(), weights_full_path)
     # return recon_losses,kl_losses,total_losses
-    return kl_losses,recon_losses,total_losses,weights_full_path
+    return kl_losses,recon_losses,total_losses,weights_full_path,end_epoch,lr_history
+
 
     
 def plot_loss(losses,title):
@@ -428,7 +441,7 @@ def plot_loss(losses,title):
 
 
 
-def generate_samples(num_of_samples,model,weights_path):
+def generate_samples(num_of_samples,model,weights_path,output_path):
     #weights_path = "pokemon_cnn_beta_3_vae_300_epochs_dim_7500_loss_type_bce_optimizer_type_Adam.pth"#"/content/drive/MyDrive/pokemon/weights/pokemon_cnn_beta_"+str(beta)+"_vae_"+str(epochs)+"_epochs.pth"
     #weights_path = "pokemon_cnn_beta_"+str(beta)+"_vae_"+str(epochs)+"_epochs_dim_"+str(z_dim)+"_loss_type_"+str(loss_type)+"_optimizer_type_"+str(optimizer_type)+".pth"
     #path = os.path.join("..","data")
@@ -440,7 +453,7 @@ def generate_samples(num_of_samples,model,weights_path):
         transform = torchvision.transforms.ToPILImage()
         for i,sample in enumerate(samples):
             img = transform(sample)
-            img = img.save("./output_images/"+str(i)+".jpg")
+            img = img.save(output_path+"/"+str(i)+".jpg")
         # fig = plt.figure(figsize=(20 ,12))
         # for i,sample in enumerate(samples):
         #     ax = fig.add_subplot(3, 6, i + 1)
@@ -771,12 +784,13 @@ class encoder_pg(nn.Module):
 
 
 class ProjectedVAE(nn.Module):
-    def __init__(self, z_dim,outs_shape,device, projected):
+    def __init__(self, z_dim,outs_shape,device, projected, proj_type):
         super(ProjectedVAE, self).__init__()
         self.projected = projected
         self.device = device
         self.z_dim = z_dim
         self.outs_shape = outs_shape
+        self.proj_type = proj_type
         #self.cond_dim = cond_dim
 
         #if self.cond_dim is not None:
@@ -785,7 +799,7 @@ class ProjectedVAE(nn.Module):
         self.encoder1 = encoder_pg(start_sz = outs_shape["1"][2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
         self.encoder2 = encoder_pg(start_sz = outs_shape["2"][2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
         self.encoder3 = encoder_pg(start_sz = outs_shape["3"][2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
-        self.projector = F_RandomProj().eval()
+        self.projector = F_RandomProj(proj_type = self.proj_type).eval()
         # for param in self.projector.features.parameters():
         #     param.requires_grad = False
         #VaeCnnEncoder_06_11(z_dim,x_shape, self.device)#,self.cond_dim)
