@@ -17,15 +17,17 @@ from PIL import Image
 from projector import F_RandomProj
 from datetime import datetime
 import math
-import piq
+import piqa
 #from pg_modules.blocks import DownBlock, DownBlockPatch, conv2d
 from functools import partial
 import our_datasets
 
 def calc_fid(dataloader1,dataloader2):
+
+    
     fid_metric = piq.FID()
-    first_feats = fid_metric.compute_feats(dataloader1)
-    second_feats = fid_metric.compute_feats(dataloader2)
+    first_feats = fid_metric.compute_feats(dataloader1)#,feature_extractor=torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT))
+    second_feats = fid_metric.compute_feats(dataloader2)#,feature_extractor=torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT))
     return fid_metric(first_feats,second_feats)
 
 
@@ -240,7 +242,7 @@ class Vae_cnn_1(torch.nn.Module):
 
         #if self.cond_dim is not None:
         #x_dim+= cond_dim
-        self.encoder = encoder_pg(start_sz = x_shape[1], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
+        self.encoder = encoder_pg(start_sz = x_shape[1], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device,projected=False)
         #VaeCnnEncoder_06_11(z_dim,x_shape, self.device)#,self.cond_dim)
         
         #if self.cond_dim is not None:
@@ -263,8 +265,7 @@ class Vae_cnn_1(torch.nn.Module):
         
 
     def encode(self, x):
-        z, mu, logvar = self.encoder(x)
-        return z, mu, logvar
+        return self.encoder(x)
 
     def decode(self, z):#, c):#,labels):
         x = self.decoder(z)#, c)#,labels)
@@ -295,7 +296,7 @@ class Vae_cnn_1(torch.nn.Module):
         return x_recon, mu, logvar, z = Vae(X)
         """
         #print("input:",x.shape)
-        z, mu, logvar = self.encode(x)
+        z,mu, logvar = self.encode(x)
         #if x_cond is not None:
         #z = torch.cat([z, x_cond], dim=1)
         x_recon = self.decode(z)#, c)#,labels)
@@ -349,7 +350,7 @@ def set_device():
 
 def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
                   loss_type,optimizer_type, weights_save_path,dataset_name,
-                  json_data, c=None):
+                  json_data,dataset_parameters,projected, c=None):
     # training
     # check if there is gpu avilable, if there is, use it
     # device = torch.device("cpu")
@@ -390,6 +391,7 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
     not_a_number = False
     temp_dataset = our_datasets.FID_dataset("./temp",num_images=100)
     temp_dataloader = DataLoader(temp_dataset, batch_size=10, shuffle=True)
+    mock_dataset = our_datasets.Pokemon_dataset(images_root=dataset_parameters['images_root'],transform = dataset_parameters["transform"],normalized=True,projected=projected)
 
     for epoch in range(epochs):
         epoch_start_time = time.time()
@@ -461,7 +463,7 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
         end_epoch = epoch
     #torch.save(model.state_dict(), weights_full_path)
     # return recon_losses,kl_losses,total_losses
-    return kl_losses,recon_losses,total_losses,weights_full_path,end_epoch,lr_history,current_time
+    return kl_losses,recon_losses,total_losses,weights_full_path,end_epoch,lr_history,current_time,fid_history
 
 
     
@@ -734,9 +736,10 @@ class VaeCnnDecoder_06_11(torch.nn.Module):
 
 
 class encoder_pg(nn.Module):
-    def __init__(self, nc=None, ndf=None, start_sz=256, end_sz=8, head=None, separable=False, patch=False,z_dim=100,device='cpu'):
+    def __init__(self, nc=None, ndf=None, start_sz=256, end_sz=8, head=None, separable=False, patch=False,z_dim=100,device='cpu',projected = False):
         super().__init__()
         self.device = device
+        self.projected = projected
         #channel_dict = {4: 512, 8: 512, 16: 256, 32: 128, 64: 64, 128: 64,
         #                256: 32, 512: 16, 1024: 8}
         # i cahnged 256 to 3 because:
@@ -792,8 +795,11 @@ class encoder_pg(nn.Module):
         """ 
         mu, logvar = self.fc1(h), self.fc2(h)
         # use the reparametrization trick as torch.normal(mu, logvar.exp()) is not differentiable
-        #z = reparameterize(mu, logvar, device=self.device)
-        return mu, logvar
+        if self.projected == False:
+            z = reparameterize(mu, logvar, device=self.device)
+        else:
+            z = None
+        return z, mu, logvar
 
 
     def forward(self, x):
@@ -830,10 +836,10 @@ class ProjectedVAE(nn.Module):
         #x_dim+= cond_dim
         self.projector = F_RandomProj(proj_type = self.proj_type).eval()
         self.projector.requires_grad_(False)
-        self.encoder0 = encoder_pg(start_sz = outs_shape["0"][2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
-        self.encoder1 = encoder_pg(start_sz = outs_shape["1"][2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
-        self.encoder2 = encoder_pg(start_sz = outs_shape["2"][2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
-        self.encoder3 = encoder_pg(start_sz = outs_shape["3"][2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device)
+        self.encoder0 = encoder_pg(start_sz = outs_shape["0"][2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device,projected=True)
+        self.encoder1 = encoder_pg(start_sz = outs_shape["1"][2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device,projected=True)
+        self.encoder2 = encoder_pg(start_sz = outs_shape["2"][2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device,projected=True)
+        self.encoder3 = encoder_pg(start_sz = outs_shape["3"][2], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device,projected=True)
         # for param in self.projector.features.parameters():
         #      param.requires_grad = False
         #VaeCnnEncoder_06_11(z_dim,x_shape, self.device)#,self.cond_dim)
@@ -861,10 +867,10 @@ class ProjectedVAE(nn.Module):
         return outs
 
     def encode(self, outs):
-        mu_0, logvar_0 = self.encoder0(outs['0'])#z_0, mu_0, logvar_0 = self.encoder0(outs['0'])
-        mu_1, logvar_1 = self.encoder1(outs['1'])#z_1, mu_1, logvar_1 = self.encoder1(outs['1'])
-        mu_2, logvar_2 = self.encoder2(outs['2'])#z_2, mu_2, logvar_2 = self.encoder2(outs['2'])
-        mu_3, logvar_3 = self.encoder3(outs['3'])#z_3, mu_3, logvar_3 = self.encoder3(outs['3'])
+        _,mu_0, logvar_0 = self.encoder0(outs['0'])#z_0, mu_0, logvar_0 = self.encoder0(outs['0'])
+        _,mu_1, logvar_1 = self.encoder1(outs['1'])#z_1, mu_1, logvar_1 = self.encoder1(outs['1'])
+        _,mu_2, logvar_2 = self.encoder2(outs['2'])#z_2, mu_2, logvar_2 = self.encoder2(outs['2'])
+        _,mu_3, logvar_3 = self.encoder3(outs['3'])#z_3, mu_3, logvar_3 = self.encoder3(outs['3'])
         #z = torch.cat([z_0,z_1,z_2,z_3],dim=1)
         mu = torch.cat([mu_0,mu_1,mu_2,mu_3],dim=1)
         logvar = torch.cat([logvar_0,logvar_1,logvar_2,logvar_3],dim=1)

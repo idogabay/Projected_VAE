@@ -14,6 +14,7 @@ from projector import F_RandomProj
 from datetime import datetime
 import json
 
+
 def main():
     torch.set_float32_matmul_precision('high')
     epochs = 800
@@ -26,23 +27,36 @@ def main():
     weights_save_path = "/home/ido/datasets/projected_vae/pokemon/weights"
     dataset_name = "pokemon"
     now = datetime.now()
-    transform = torchvision.transforms.Compose([
-        #torchvision.transforms.Resize((256,256)),
-        #torchvision.transforms.ColorJitter(brightness = 0.2,contrast = 0.2,saturation = 0.2,hue = 0.1),
-        torchvision.transforms.RandomHorizontalFlip(p=0.5),
-        #torchvision.transforms.RandomVerticalFlip(p=0.3),
-        #torchvision.transforms.RandomRotation(degrees = 15,interpolation = torchvision.transforms.InterpolationMode.BILINEAR),
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
-        ])
-    dataset = our_datasets.Pokemon_dataset(pics_path,transform)   #PokemonDataset(root=path, rgb=True)#'/content/drive/MyDrive/pokemon/pokemon', rgb=True)
+    
+    
+    #hyper parameters
+    projected = False
+    if projected:
+        transform = torchvision.transforms.Compose([
+            #torchvision.transforms.Resize((256,256)),
+            #torchvision.transforms.ColorJitter(brightness = 0.2,contrast = 0.2,saturation = 0.2,hue = 0.1),
+            torchvision.transforms.RandomHorizontalFlip(p=0.5),
+            #torchvision.transforms.RandomVerticalFlip(p=0.3),
+            #torchvision.transforms.RandomRotation(degrees = 15,interpolation = torchvision.transforms.InterpolationMode.BILINEAR),
+            torchvision.transforms.ToTensor(),
+            torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
+            ])
+    else:
+            transform = torchvision.transforms.Compose([
+            #torchvision.transforms.Resize((256,256)),
+            #torchvision.transforms.ColorJitter(brightness = 0.2,contrast = 0.2,saturation = 0.2,hue = 0.1),
+            torchvision.transforms.RandomHorizontalFlip(p=0.5),
+            #torchvision.transforms.RandomVerticalFlip(p=0.3),
+            #torchvision.transforms.RandomRotation(degrees = 15,interpolation = torchvision.transforms.InterpolationMode.BILINEAR),
+            torchvision.transforms.ToTensor(),
+            ])
+    dataset = our_datasets.Pokemon_dataset(pics_path,transform,normalized=False,projected=projected)   #PokemonDataset(root=path, rgb=True)#'/content/drive/MyDrive/pokemon/pokemon', rgb=True)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     loss_type = "mse"
     optimizer_type = "Adam"
     z_dim =256
     beta = 0.05 #for adam 0.01.
     proj_type = 2
-    projected = False
     device = set_device()
     #model = Vae_cnn_1(z_dim=z_dim,x_shape=x_shape,device=device).to(device)
 
@@ -56,7 +70,7 @@ def main():
     
     ######################################
     #hyper parameters for loop
-    betas = [1,3,5]
+    betas = [0.01,0.2,1,3]
     optimizers = ["Adam"]#],"SGD"]
     losses = ["mse"]#,"bce","l1"]
     datasets = ["pokemon"]#,"flowers"]#,"landscapes"]
@@ -69,7 +83,7 @@ def main():
     if projected:
         model = ProjectedVAE(z_dim=z_dim,outs_shape=outs_shape,device=device,proj_type=proj_type)#.to(device)
     else:
-        model = Vae_cnn_1(z_dim=z_dim,x_shape=x_shape,device=device).to(device)
+        model = Vae_cnn_1(z_dim=z_dim,x_shape=x_shape,device=device)#.to(device)
     model = torch.compile(model.to(device))
 
     weights_path = ""
@@ -126,22 +140,24 @@ def main():
                                             augmentations = ["RandomHorizontalFlip"]
                                             pics_path ="/home/ido/datasets/projected_vae/landscapes/resized_images"
 
-                                        dataset = our_datasets.Pokemon_dataset(pics_path,transform)
+                                        dataset = our_datasets.Pokemon_dataset(pics_path,transform,normalized=False,projected=projected)
+                                        dataset_parameters = {"images_root":pics_path,"transform":transform}
                                         dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
                                         # restart model
                                         model = model.to("cpu")
                                         del model
                                         if projected:
-                                            model = ProjectedVAE(z_dim=z_dim,outs_shape=outs_shape,device=device,projected=projected,proj_type=proj_type)#.to(device)
+                                            model = ProjectedVAE(z_dim=z_dim,outs_shape=outs_shape,device=device,proj_type=proj_type)#.to(device)
                                         else:
                                             model = Vae_cnn_1(z_dim=z_dim,x_shape=x_shape,device=device)
                                         model = torch.compile(model.to(device)).to(device)
                                         
                                         # training loop
-                                        kl_losses,recon_losses,total_losses, weights_path,end_epoch,lr_history,timestamp = training_loop(
+                                        kl_losses,recon_losses,total_losses, weights_path,end_epoch,lr_history,timestamp,fid_history = training_loop(
                                             model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
-                                            loss_type,optimizer_type,weights_save_path,dataset_name,json_data
-                                        )
+                                            loss_type,optimizer_type,weights_save_path,dataset_name,
+                                            json_data,dataset_parameters,projected=projected
+                                            )
 
                                         # create and save samples
                                         output_path = os.path.join(output_base_path,timestamp)
@@ -158,6 +174,7 @@ def main():
                                         json_data['end_epoch'] = end_epoch
                                         json_data['lr_history'] = lr_history
                                         json_data['output_path'] =  output_path
+                                        json_data['fid_history'] = fid_history
                                         json_string = json.dumps(json_data,indent=4)
                                         json_name = str(timestamp)+".json"
                                         json_path = os.path.join(output_path,json_name)
