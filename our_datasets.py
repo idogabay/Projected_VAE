@@ -6,6 +6,7 @@ import pandas as pd
 import torch
 import os
 import json
+import torchvision
 
 
 class Pokemon_dataset(Dataset):
@@ -88,4 +89,25 @@ class FFHQ_dataset(Dataset):
             idx = idx.tolist()
         image_name = self.csv[idx][0]
         image_path = os.path.join(str(self.images_root),str(self.csv[idx][0]))
+        image = Image.open(image_path)
+        return self.transform(image)
+
+class FID_dataset(Dataset):
+    def __init__(self, images_root, num_images,
+                 transform = torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
+                            torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])])):
+        self.images_root = images_root
+        self.transform = transform
+        self.num_images = num_images
+    def __len__(self):
+        return len(self.num_images)
+    
+    def __getitem__(self, idx):
+        if torch.is_tensor(idx):
+            idx = idx.tolist()
+        image_name = str(idx)+".jpg"
+        image_path = os.path.join(str(self.images_root),image_name)
+        image = Image.open(image_path)
+        return self.transform(image)
+
 

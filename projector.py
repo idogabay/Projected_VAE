@@ -171,7 +171,8 @@ class F_RandomProj(nn.Module):
             '3': out3,
         }
 
-        if self.proj_type == 0: return out
+        if self.proj_type == 0: 
+            return out
 
         out0_channel_mixed = self.scratch.layer0_ccm(out['0'])
         out1_channel_mixed = self.scratch.layer1_ccm(out['1'])
@@ -185,7 +186,8 @@ class F_RandomProj(nn.Module):
             '3': out3_channel_mixed,
         }
 
-        if self.proj_type == 1: return out
+        if self.proj_type == 1: 
+            return out
 
         # from bottom to top
         out3_scale_mixed = self.scratch.layer3_csm(out3_channel_mixed)
