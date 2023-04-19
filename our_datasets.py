@@ -10,16 +10,14 @@ import torchvision
 
 
 class Pokemon_dataset(Dataset):
-    def __init__(self, images_root,transform,normalized = False, projected = False):
+    def __init__(self, images_root,transform):
         self.images_root = images_root
-        #self.csv = np.array(pd.read_csv(csv_file))
         self.all_images = os.listdir(self.images_root)
         self.all_images.sort()
-        #print(self.all_images)
         self.transform = transform
-        if normalized == True and projected == False:
-            self.transform = torchvision.transforms.Compose([self.transform,
-                                torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])])
+
+    # def get_root(self):
+    #     return self.images_root
 
     def __len__(self):
         return len(self.all_images)

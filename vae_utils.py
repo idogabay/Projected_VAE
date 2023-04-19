@@ -21,14 +21,73 @@ import piqa
 #from pg_modules.blocks import DownBlock, DownBlockPatch, conv2d
 from functools import partial
 import our_datasets
+from random import sample
+import torch.nn.functional as F
 
-def calc_fid(dataloader1,dataloader2):
+def calc_fid(data_path,generated_path):
+    num_pics = 50
+    #print("hiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii")
+    pics_names = os.listdir(data_path)
+    samples = sample(pics_names,num_pics)
 
-    
-    fid_metric = piq.FID()
-    first_feats = fid_metric.compute_feats(dataloader1)#,feature_extractor=torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT))
-    second_feats = fid_metric.compute_feats(dataloader2)#,feature_extractor=torchvision.models.vgg16(weights=torchvision.models.VGG16_Weights.DEFAULT))
-    return fid_metric(first_feats,second_feats)
+    transform = torchvision.transforms.ToTensor()#,torchvision.transforms.Compose([
+                    #torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                                        #std=[0.229, 0.224, 0.225])])
+    #get tensor ready
+    pics = torch.zeros((1,3,256,256))
+    generates = torch.zeros((1,3,256,256))
+    for i in range(num_pics):
+        pic_name = str(i)+".jpg"
+        pic_path = os.path.join(data_path,samples[i])
+        generated_pic_path = os.path.join(generated_path,pic_name)
+        pic = Image.open(pic_path)
+        generate = Image.open(generated_pic_path)
+        if i == 0:
+            #pics = torch.zeros((1,3,256,256))
+            #generates = torch.zeros((1,3,256,256))
+            pics = torch.unsqueeze(transform(pic),0)
+            generates = torch.unsqueeze(transform(generate),0)
+        else:
+            pics = torch.cat((pics,torch.unsqueeze(transform(pic),dim=0)))
+            generates = torch.cat((generates,torch.unsqueeze(transform(pic),dim=0)),dim = 0)
+
+    min_pic = [0,0,0]
+    max_pic = [0,0,0]
+    max_range_pic = [0,0,0]
+    min_generated = [0,0,0]
+    max_generated = [0,0,0]
+    max_range_generated = [0,0,0]
+    for i in range(3):
+        min_pic[i] = torch.min(torch.min(torch.min(pics[:,i],dim=2)[0],dim=1)[0],dim=0)[0]
+        min_generated[i] = torch.min(torch.min(torch.min(generates[:,i],dim=2)[0],dim=0)[0],dim=0)[0]
+        max_pic[i] = torch.min(torch.max(torch.max(pics[:,i],dim=2)[0],dim=0)[0],dim=0)[0]
+        max_generated[i] = torch.min(torch.max(torch.max(generates[:,i],dim=2)[0],dim=0)[0],dim=0)[0]
+    for i in range(3):
+        max_range_pic[i] = max_pic[i]-min_pic[i]
+        max_range_generated[i] = max_generated[i]-min_generated[i]  
+    for i in range(3):
+        #print(pics[:,i].shape)
+        #print(min_pic[i])
+        pics[:,i] = (pics[:,i]-min_pic[i])/max_range_pic[i]
+        generates[:,i] = (generates[:,i]-min_generated[i])/max_range_generated[i]
+
+    pics[pics>1] = 1
+    pics[pics<0] = 0
+    generates[generates>1] = 1
+    generates[generates<0] = 0
+    fid_metric = piqa.FID()
+    #print(pics.shape)
+    #print(generates.shape)
+    pics_features = fid_metric.features(x=pics)
+    generates_features = fid_metric.features(x=generates)
+    fid = fid_metric(pics_features,generates_features)
+    #print(fid)
+    del fid_metric
+    del pics
+    del generates
+    del pics_features
+    del generates_features
+    return fid
 
 
 
@@ -348,9 +407,9 @@ def set_device():
         torch.cuda.current_device()
     return torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
+def training_loop(model,device,epochs,lr,beta,dataloader,
                   loss_type,optimizer_type, weights_save_path,dataset_name,
-                  json_data,dataset_parameters,projected, c=None):
+                  json_data,projected, pics_root_dir, generated_pics_root_dir):
     # training
     # check if there is gpu avilable, if there is, use it
     # device = torch.device("cpu")
@@ -365,7 +424,7 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
         vae_optim = torch.optim.SGD(params=model.parameters(), lr=lr)
     #scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer=vae_optim,
     #            mode='min',threshold=0.001,threshold_mode='rel',factor=0.5,patience=5,verbose = True)
-    scheduler = torch.optim.lr_scheduler.StepLR(optimizer=vae_optim,step_size=10,gamma=0.95,last_epoch=-1,verbose=True)
+    scheduler = torch.optim.lr_scheduler.StepLR(optimizer=vae_optim,step_size=10,gamma=0.95,last_epoch=-1,verbose=False)
     now = datetime.now()
     current_time = now.strftime("date_%d-%m-%Y__time_%H-%M-%S")
     weights_name = dataset_name+"_"+str(current_time)+".pth"
@@ -385,13 +444,16 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
     lpips_gistory = []
     print("start training")
     # here we go
-    min_fid = 999999999
+    min_fid = torch.ones((1))
+    min_fid[0] = 999999999
+    min_fid = min_fid[0]
+    fid = min_fid
     last_epoch_min = 0
     end_epoch = 0
     not_a_number = False
-    temp_dataset = our_datasets.FID_dataset("./temp",num_images=100)
-    temp_dataloader = DataLoader(temp_dataset, batch_size=10, shuffle=True)
-    mock_dataset = our_datasets.Pokemon_dataset(images_root=dataset_parameters['images_root'],transform = dataset_parameters["transform"],normalized=True,projected=projected)
+    #temp_dataset = our_datasets.FID_dataset("./temp",num_images=100)
+    #temp_dataloader = DataLoader(temp_dataset, batch_size=10, shuffle=True)
+    #mock_dataset = our_datasets.Pokemon_dataset(images_root=dataset_parameters['images_root'],transform = dataset_parameters["transform"],normalized=True,projected=projected)
 
     for epoch in range(epochs):
         epoch_start_time = time.time()
@@ -431,16 +493,26 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
             if math.isnan(kl) or math.isnan(recon) or math.isnan(total_loss):
                 not_a_number = True
                 break 
+         
+        x_recon = x_recon.detach().cpu()
+        transform = torchvision.transforms.ToPILImage()
+        for i in range(x_recon.shape[0]):
+            img = denormalized(x_recon[i])
+            print(img)
+            pil = transform(img)
+            img_name = "./recon/"+str(i)+".jpg"
+            im = pil.save(img_name)
+            
         #delete
         batch = batch.to("cpu")
         del batch
         if not_a_number:
             print("loss is not a number - break")
             break
-        
-        generate_samples(100,model,None,"./temp")
-        fid = calc_fid(dataloader,temp_dataloader)
-        print("fid:",fid)
+        if epoch>10 and epoch % 3 == 0:
+            generate_samples(100,model,None,"./temp")
+            fid = calc_fid(pics_root_dir, generated_pics_root_dir)
+        #print("fid:",fid)
 
         loss = np.mean(batch_total_losses)
         if fid<min_fid:
@@ -452,7 +524,7 @@ def training_loop(model,device,epochs,x_shape,z_dim,lr,beta,dataloader,
         total_losses.append(loss)
         kl_losses.append(np.mean(batch_kl_losses))
         recon_losses.append(np.mean(batch_recon_losses))
-        fid_history.append(fid)
+        fid_history.append(fid.item())
         if (epoch+1)%10 ==0:
             print("epoch: {}| kl {:.3f}| recon {:.3f} |total_loss {:.3f}| epoch time: {:.3f} sec"\
                 .format((epoch+1),kl_losses[-1],recon_losses[-1],total_losses[-1], time.time() - epoch_start_time))
@@ -474,9 +546,27 @@ def plot_loss(losses,title):
     plt.title(title)
     plt.show()
 
+def denormalized(tensor,mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225]):
+    #print("pic shape:",tensor.shape)
+    channels = tensor.shape[0]
+    for i in range(channels):
+        tensor[i,:,:] = tensor[i,:,:]*std[i] + mean[i]
+    return tensor
 
+# class Denormalize(object):
+#     def __init__(self, mean, std, inplace=False):
+#         self.mean = mean
+#         self.demean = [-m/s for m, s in zip(mean, std)]
+#         self.std = std
+#         self.destd = [1/s for s in std]
+#         self.inplace = inplace
 
-def generate_samples(num_of_samples,model,weights_path = None,output_path = "./temp"):
+#     def __call__(self, tensor):
+#         tensor =  F.normalize(tensor, self.demean, self.destd, self.inplace)
+#         # clamp to get rid of numerical errors
+#         return tensor#torch.clamp(tensor, 0.0, 1.0)
+
+def generate_samples(num_of_samples,model,weights_path = None,output_path = "./temp",to_print = False):
     #weights_path = "pokemon_cnn_beta_3_vae_300_epochs_dim_7500_loss_type_bce_optimizer_type_Adam.pth"#"/content/drive/MyDrive/pokemon/weights/pokemon_cnn_beta_"+str(beta)+"_vae_"+str(epochs)+"_epochs.pth"
     #weights_path = "pokemon_cnn_beta_"+str(beta)+"_vae_"+str(epochs)+"_epochs_dim_"+str(z_dim)+"_loss_type_"+str(loss_type)+"_optimizer_type_"+str(optimizer_type)+".pth"
     #path = os.path.join("..","data")
@@ -488,7 +578,8 @@ def generate_samples(num_of_samples,model,weights_path = None,output_path = "./t
         samples = model.sample(num_of_samples)
         transform = torchvision.transforms.ToPILImage()
         for i,sample in enumerate(samples):
-            img = transform(sample)
+            print(denormalized(sample))
+            img = transform(denormalized(sample))
             img = img.save(output_path+"/"+str(i)+".jpg")
         # fig = plt.figure(figsize=(20 ,12))
         # for i,sample in enumerate(samples):
@@ -498,7 +589,8 @@ def generate_samples(num_of_samples,model,weights_path = None,output_path = "./t
         #     ax.set_axis_off()
         # plt.show()
     model.train()    
-    print("done")
+    if to_print:
+        print("done")
 
 #encoder new 06/11/22- Q(z|X)
 class VaeCnnEncoder_06_11(torch.nn.Module):
