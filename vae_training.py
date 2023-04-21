@@ -25,7 +25,7 @@ def main():
     augmentations = ["horizontalflip"]
     pics_path ="/home/ido/datasets/projected_vae/obama/resized_images"
     weights_save_path = "/home/ido/datasets/projected_vae/obama/weights"
-    dataset_name = "obama"
+    dataset_name = "flowers"
     
     
     #hyper parameters
@@ -60,11 +60,12 @@ def main():
     
     ######################################
     #hyper parameters for loop
-    betas = [0.01,0.1,0.5,1]
-    datasets = ["anime-face","obama","flowers"]
+    betas = [0.1,0.5,1]
+    datasets = ["flowers"]
     #big_zs = [True,False]
+    dataset_sizes = [8189,4000,2000,1000]
     output_base_path = "./output_images"
-    lrs = [2e-4,5e-5,1e-5] #2e-4
+    #lrs = [2e-4,5e-5,1e-5] #2e-4
     #proj_types = [2,1,0]
     #architecture = "pvae"
     augmentations = ["horizontalflip"]
@@ -82,10 +83,10 @@ def main():
     generated_pics_dir = "./batch_generated"
     pics_path_base ="/home/ido/datasets/projected_vae/"
     weights_save_path_base = "/home/ido/datasets/projected_vae"
-    for beta in betas:
-        #for big_z in big_zs:
-            for dataset_name in datasets:
-                for lr in lrs:
+    for datset_size in dataset_sizes:
+        for beta in betas:
+                #for dataset_name in datasets:
+                #for lr in lrs:
                     iter_count+=1
                     if iter_count >skip:
                                 torch.cuda.empty_cache()
@@ -100,11 +101,12 @@ def main():
                                 json_data['loss_type'] = loss_type
                                 json_data['proj_types'] = proj_type
                                 json_data['dataset_name'] = dataset_name
+                                json_data['datset_size'] = datset_size
                                 #json_data['architecture'] = architecture
 
                                 pics_path = pics_path_base+"/"+dataset_name+"/resized_images"
                                 weights_save_path = weights_save_path_base+"/"+dataset_name+"/weights"
-                                dataset = our_datasets.Pokemon_dataset(pics_path,transform)
+                                dataset = our_datasets.Pokemon_dataset(pics_path,transform,dataset_size=datset_size)
                                 dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
                                 
                                 # restart model

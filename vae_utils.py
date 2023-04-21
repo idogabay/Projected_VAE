@@ -492,7 +492,7 @@ def training_loop(model,device,epochs,lr,beta,dataloader,
         if not_a_number:
             print("loss is not a number - break")
             break
-        if epoch>10 and epoch % 3 == 0:
+        if epoch>10 and epoch % 5 == 0:
             tic = time.time()
             generate_samples(30,model,None,"./batch_generated")
             tak = time.time()
@@ -518,7 +518,7 @@ def training_loop(model,device,epochs,lr,beta,dataloader,
         if (epoch+1)%10 ==0:
             print("epoch: {}| kl {:.3f}| recon {:.3f} |total_loss {:.3f}| epoch time: {:.3f} sec"\
                 .format((epoch+1),kl_losses[-1],recon_losses[-1],total_losses[-1], time.time() - epoch_start_time))
-        if epoch-last_epoch_min > 150:
+        if epoch-last_epoch_min > 100:
             print("stop improving at epoch:",last_epoch_min,".\nbreaking loop")
             end_epoch = last_epoch_min
             break

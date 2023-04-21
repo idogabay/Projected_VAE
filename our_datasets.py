@@ -7,12 +7,15 @@ import torch
 import os
 import json
 import torchvision
-
-
+import random
+\
 class Pokemon_dataset(Dataset):
-    def __init__(self, images_root,transform):
+    def __init__(self, images_root,transform,dataset_size = None):
         self.images_root = images_root
         self.all_images = os.listdir(self.images_root)
+        if dataset_size != None:
+            if dataset_size < len(self.all_images):
+                self.all_images = random.sample(self.all_images,dataset_size)
         self.all_images.sort()
         self.transform = transform
 
