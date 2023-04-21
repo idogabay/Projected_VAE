@@ -1,2 +1,4 @@
 output_images
-temp
+batch_generated
+batch_recon
+batch_images

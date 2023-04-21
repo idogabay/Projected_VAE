@@ -149,7 +149,6 @@ class FastganSynthesisCond(nn.Module):
 class Generator(nn.Module):
     def __init__(
         self,
-        projected = False,
         z_dim=256,#*4,
         c_dim=0,
         w_dim=0,
@@ -161,12 +160,7 @@ class Generator(nn.Module):
         synthesis_kwargs={}
     ):
         super().__init__()
-        self.projected = projected
-        if self.projected:
-            self.z_dim = z_dim*4
-        else:
-            self.z_dim = z_dim
-        
+        self.z_dim = z_dim
         self.c_dim = c_dim
         self.w_dim = w_dim
         self.img_resolution = img_resolution
