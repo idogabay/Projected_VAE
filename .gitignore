@@ -2,3 +2,4 @@ output_images
 batch_generated
 batch_recon
 batch_images
+*.pyc

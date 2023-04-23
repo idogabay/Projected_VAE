@@ -13,8 +13,8 @@ class DummyMapping(nn.Module):
     def __init__(self):
         super().__init__()
 
-    def forward(self, z):# ido left out  , c, **kwargs):
-        return z.unsqueeze(1)  # to fit the StyleGAN API
+    def forward(self, z):
+        return z.unsqueeze(1)
 
 
 class FastganSynthesis(nn.Module):

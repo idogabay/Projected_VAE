@@ -493,13 +493,8 @@ def training_loop(model,device,epochs,lr,beta,dataloader,
             print("loss is not a number - break")
             break
         if epoch>10 and epoch % 5 == 0:
-            tic = time.time()
             generate_samples(30,model,None,"./batch_generated")
-            tak = time.time()
             fid = calc_fid(pics_root_dir, generated_pics_root_dir)
-            tok = time.time()
-            print("generation time:",tak-tic,", fid time:",tok-tak)
-        #print("fid:",fid)
 
         loss = np.mean(batch_total_losses)
         if fid<min_fid:
