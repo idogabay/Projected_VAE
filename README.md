@@ -15,6 +15,7 @@ the dataset folder format must be:
 ### training  
 you can train the PVAE by running "train.py"  
 **notice you adapt the paths for the right places in your computer**  
+(tested in VScode)
 
 ## Generating Images  
 run the script "generate_images.py"  
@@ -40,3 +41,8 @@ we used datasets : a, b,c. all can be downloaded [in this link](https://drive.go
 ### 500 images
 ![1](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/1000vae.jpg)
 ![2](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/1000pvae.jpg)
+
+## Results  
+ - In nost cases PVAE performed better then VAE.  
+ - We compared the two using FID and the Flowers dataset in a decreasing size:
+ ![1](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/graph.jpg)
