@@ -10,7 +10,7 @@ While working on this project, we tested our model on various datasets of differ
   - In this project we allow both training and generation of images using PVAE.
   
     
-![1](https://github.com/idogabay/Projected_VAE/blob/270df427193767f2d8dd28a60b0b3a59bb3b21b1/readme_imgs/top.jpg)
+![1](https://github.com/idogabay/Projected_VAE/blob/5c3f7d7067e7bc1a8b146991d86b3a1c3804969d/readme_imgs/top.jpg)
 ![1](https://github.com/idogabay/Projected_VAE/blob/270df427193767f2d8dd28a60b0b3a59bb3b21b1/readme_imgs/architecture.jpg)  
 this projected is based of [Projected GAN](https://github.com/autonomousvision/projected-gan) project
 ## Requirements to run  
