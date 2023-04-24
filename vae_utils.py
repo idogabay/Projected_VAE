@@ -26,14 +26,10 @@ import torch.nn.functional as F
 
 def calc_fid(data_path,generated_path):
     num_pics = 30
-    #print("hiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiiii")
     pics_names = os.listdir(data_path)
     samples = sample(pics_names,num_pics)
 
-    transform = torchvision.transforms.ToTensor()#,torchvision.transforms.Compose([
-                    #torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                                        #std=[0.229, 0.224, 0.225])])
-    #get tensor ready
+    transform = torchvision.transforms.ToTensor()
     pics = torch.zeros((1,3,256,256))
     generates = torch.zeros((1,3,256,256))
     for i in range(num_pics):
@@ -43,8 +39,6 @@ def calc_fid(data_path,generated_path):
         pic = Image.open(pic_path)
         generate = Image.open(generated_pic_path)
         if i == 0:
-            #pics = torch.zeros((1,3,256,256))
-            #generates = torch.zeros((1,3,256,256))
             pics = torch.unsqueeze(transform(pic),0)
             generates = torch.unsqueeze(transform(generate),0)
         else:
@@ -66,8 +60,6 @@ def calc_fid(data_path,generated_path):
         max_range_pic[i] = max_pic[i]-min_pic[i]
         max_range_generated[i] = max_generated[i]-min_generated[i]  
     for i in range(3):
-        #print(pics[:,i].shape)
-        #print(min_pic[i])
         pics[:,i] = (pics[:,i]-min_pic[i])/max_range_pic[i]
         generates[:,i] = (generates[:,i]-min_generated[i])/max_range_generated[i]
 
@@ -76,21 +68,15 @@ def calc_fid(data_path,generated_path):
     generates[generates>1] = 1
     generates[generates<0] = 0
     fid_metric = piqa.FID()
-    #print(pics.shape)
-    #print(generates.shape)
     pics_features = fid_metric.features(x=pics)
     generates_features = fid_metric.features(x=generates)
     fid = fid_metric(pics_features,generates_features)
-    #print(fid)
     del fid_metric
     del pics
     del generates
     del pics_features
     del generates_features
     return fid
-
-
-
 
 
 def NormLayer(c, mode='group'):
@@ -237,15 +223,13 @@ class VaeCnnDecoder(torch.nn.Module):
        :param z_dim: latent dimensions
        """
 
-    def __init__(self, z_dim):#, cond_dim = 10):
+    def __init__(self, z_dim):
         super(VaeCnnDecoder, self).__init__()
         self.z_dim = z_dim
-        ### here need to concate label
         ###block0
-        self.fc0 = nn.Linear(self.z_dim, 16*16*64*4)#100 * 4 * 4 * 4)
-        self.bn0 = nn.BatchNorm1d(16*16*64*4)#100 * 4 * 4 * 4)
+        self.fc0 = nn.Linear(self.z_dim, 16*16*64*4)
+        self.bn0 = nn.BatchNorm1d(16*16*64*4)
         
-        ###here need to reshape signal
         ###block1
         self.deconv1 = nn.ConvTranspose2d(in_channels=64 * 4,out_channels= 64 * 2, kernel_size=(3, 3), stride=(2, 2), padding=1, output_padding=1)
         self.bn1 = nn.BatchNorm2d(64 * 2)
@@ -265,30 +249,18 @@ class VaeCnnDecoder(torch.nn.Module):
         self.deconv4 = nn.ConvTranspose2d(in_channels=64,out_channels= 3, kernel_size=(3, 3), stride=(2, 2), padding=1, output_padding=1)
         self.sigmoid4 = nn.Sigmoid()
 
-        # self.decoder = nn.Sequential(nn.Linear(self.z_dim, self.hidden_size),
-        #                              nn.ReLU(),
-        #                              nn.Linear(self.hidden_size, self.x_dim),
-        #                              nn.Sigmoid())
-        # why we use sigmoid? becaue the pixel values of images are in [0,1] and sigmoid(x) does just that!
-        # if you don't work with images, you don't have to use that.
-
 
     def forward(self, x):
         """
         This is the function called when doing the forward pass:
         x_reconstruction = VaeDecoder(z)
         """
-        #x = torch.cat([x,labels],dim=1)
         x = self.bn0(self.fc0(x))
         x = x.reshape(x.shape[0],64*4,16,16)
         x = self.relu1(self.bn1(self.deconv1(x)))
         x = self.relu2(self.bn2(self.deconv2(x)))
         x = self.relu3(self.bn3(self.deconv3(x)))
         x = self.sigmoid4(self.deconv4(x))
-        # print("decode",x.shape)
-
-        
-        #x = self.decoder(x)
         return x
     
 
@@ -297,22 +269,14 @@ class Vae_cnn_1(torch.nn.Module):
         super(Vae_cnn_1, self).__init__()
         self.device = device
         self.z_dim = z_dim
-        #self.cond_dim = cond_dim
-
-        #if self.cond_dim is not None:
-        #x_dim+= cond_dim
         self.encoder = encoder_pg(start_sz = x_shape[1], end_sz=8, separable=False, patch=False ,z_dim=z_dim,device=self.device,projected=False)
-        self.decoder = Generator(synthesis_kwargs={'lite': False},z_dim=self.z_dim)#VaeCnnDecoder_06_11(self.z_dim)#,self.cond_dim)
-
-        # params:
-        # 
-        
+        self.decoder = Generator(synthesis_kwargs={'lite': False},z_dim=self.z_dim)
 
     def encode(self, x):
         return self.encoder(x)
 
-    def decode(self, z):#, c):#,labels):
-        x = self.decoder(z)#, c)#,labels)
+    def decode(self, z):
+        x = self.decoder(z)
         return x
 
     def sample(self,num_samples):
@@ -321,32 +285,16 @@ class Vae_cnn_1(torch.nn.Module):
         Vae.sample() actually generatess new data!
         Sample z ~ N(0,1)
         """
-        #if self.cond_dim is not None:
         z = torch.randn(num_samples, self.z_dim).to(self.device)
-        #z = ((torch.randn(num_samples, self.z_dim)*std)+mu).to(self.device)
-        #if x_cond is not None:
-        #print(self.z_dim)
-        #labels = labels_to_one_hots(labels, self.cond_dim).to(device) ###check if neseccery 
-        #else:
-        #     label = torch.randint(0,9, num_samples)
-        #     label = labels_to_one_hots(label, self.cond_dim).to(device)
-        #z = torch.cat([z, labels], dim=1)
-        # #else:
-        # z = torch.randn(num_samples, self.z_dim).to(self.device)
-        return self.decode(z)#,labels)
+        return self.decode(z)
 
-    def forward(self, x):#, c):
+    def forward(self, x):
         """
         This is the function called when doing the forward pass:
         return x_recon, mu, logvar, z = Vae(X)
         """
-        #print("input:",x.shape)
         z,mu, logvar = self.encode(x)
-        #if x_cond is not None:
-        #z = torch.cat([z, x_cond], dim=1)
-        x_recon = self.decode(z)#, c)#,labels)
-        #print("recon:",x.shape)
-        #x_recon = self.decode(z)
+        x_recon = self.decode(z)
         return x_recon, mu, logvar
 
 
@@ -363,14 +311,7 @@ def beta_loss_function(recon_x, x, mu, logvar, loss_type='bce',beta = 1,projecte
     :return: VAE loss
     """
     if loss_type == 'mse':
-        # print("CCCCCCCCCCCCCCCCCCC")
-        # print(x.shape)
-        # print(recon_x.shape)
-        # print("CCCCCCCCCCCCCCCCCCC")
-
         recon_error = (x-recon_x)**2
-        #F.mse_loss(recon_x, x, reduction='sum')
-        #print(recon_error.shape[0])
         recon_error = recon_error.sum() / recon_error.shape[0]
     elif loss_type == 'l1':
         recon_error = F.l1_loss(recon_x, x, reduction='sum')
@@ -397,12 +338,6 @@ def training_loop(model,device,epochs,lr,beta,dataloader,
                   loss_type,optimizer_type, weights_save_path,dataset_name,
                   json_data, pics_root_dir, generated_pics_root_dir):
     # training
-    # check if there is gpu avilable, if there is, use it
-    # device = torch.device("cpu")
-    #print("running calculations on: ", device)
-    # load the data
-    #dataloader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
-    # create our model and send it to the device (cpu/gpu)
     # optimizer
     if optimizer_type == "Adam":
         vae_optim = torch.optim.Adam(params=model.parameters(), lr=lr)
@@ -433,9 +368,6 @@ def training_loop(model,device,epochs,lr,beta,dataloader,
     last_epoch_min = 0
     end_epoch = 0
     not_a_number = False
-    #temp_dataset = our_datasets.FID_dataset("./temp",num_images=100)
-    #temp_dataloader = DataLoader(temp_dataset, batch_size=10, shuffle=True)
-    #mock_dataset = our_datasets.Pokemon_dataset(images_root=dataset_parameters['images_root'],transform = dataset_parameters["transform"],normalized=True,projected=projected)
 
     for epoch in range(epochs):
         epoch_start_time = time.time()
@@ -463,7 +395,6 @@ def training_loop(model,device,epochs,lr,beta,dataloader,
             vae_optim.step()
             
             # save loss
-            # print(total_loss)
             batch_total_losses.append(total_loss.cpu().item())
             batch_kl_losses.append(kl.cpu().item())
             batch_recon_losses.append(recon.cpu().item())
@@ -518,8 +449,6 @@ def training_loop(model,device,epochs,lr,beta,dataloader,
             end_epoch = last_epoch_min
             break
         end_epoch = epoch
-    #torch.save(model.state_dict(), weights_full_path)
-    # return recon_losses,kl_losses,total_losses
     return kl_losses,recon_losses,total_losses,weights_full_path,end_epoch,lr_history,current_time,fid_history
 
 
@@ -532,31 +461,13 @@ def plot_loss(losses,title):
     plt.show()
 
 def denormalized(t1,mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225]):
-    #print("pic shape:",tensor.shape)
     channels = t1.shape[0]
     t2 = torch.zeros((t1.shape))
     for i in range(channels):
         t2[i] = t1[i]*std[i] + mean[i]
     return t2
 
-# class Denormalize(object):
-#     def __init__(self, mean, std, inplace=False):
-#         self.mean = mean
-#         self.demean = [-m/s for m, s in zip(mean, std)]
-#         self.std = std
-#         self.destd = [1/s for s in std]
-#         self.inplace = inplace
-
-#     def __call__(self, tensor):
-#         tensor =  F.normalize(tensor, self.demean, self.destd, self.inplace)
-#         # clamp to get rid of numerical errors
-#         return tensor#torch.clamp(tensor, 0.0, 1.0)
-
 def generate_samples(num_of_samples,model,weights_path = None,output_path = "./batch_generated",to_print = False):
-    #weights_path = "pokemon_cnn_beta_3_vae_300_epochs_dim_7500_loss_type_bce_optimizer_type_Adam.pth"#"/content/drive/MyDrive/pokemon/weights/pokemon_cnn_beta_"+str(beta)+"_vae_"+str(epochs)+"_epochs.pth"
-    #weights_path = "pokemon_cnn_beta_"+str(beta)+"_vae_"+str(epochs)+"_epochs_dim_"+str(z_dim)+"_loss_type_"+str(loss_type)+"_optimizer_type_"+str(optimizer_type)+".pth"
-    #path = os.path.join("..","data")
-    #weights_path = os.path.join(path,weights_path)
     if weights_path != None:
         state = torch.load(weights_path,map_location=set_device())
         model.load_state_dict(state)
@@ -565,16 +476,8 @@ def generate_samples(num_of_samples,model,weights_path = None,output_path = "./b
         samples = model.sample(num_of_samples)
         transform = torchvision.transforms.ToPILImage()
         for i,sample in enumerate(samples):
-            #print(denormalized(sample))
             img = transform(denormalized(sample))
             img = img.save(output_path+"/"+str(i)+".jpg")
-        # fig = plt.figure(figsize=(20 ,12))
-        # for i,sample in enumerate(samples):
-        #     ax = fig.add_subplot(3, 6, i + 1)
-        #     sample = sample.permute(1, 2, 0).data.cpu().numpy()
-        #     ax.imshow(sample)
-        #     ax.set_axis_off()
-        # plt.show()
     model.train()    
     if to_print:
         print("done")
@@ -653,10 +556,8 @@ class VaeCnnEncoder_06_11(torch.nn.Module):
         self.bn10 = nn.BatchNorm2d(num_features=32)
         self.relu10 = nn.LeakyReLU()
         
-        #self.features = nn.Sequential(nn.Linear(x_dim, self.hidden_size),nn.ReLU())
-        ###here need to concate
-        self.fc1 = nn.Linear(288, self.z_dim)#nn.Linear(self.hidden_size, self.z_dim, bias=True)  # fully-connected to output mu
-        self.fc2 = nn.Linear(288, self.z_dim)#nn.Linear(self.hidden_size, self.z_dim, bias=True)  # fully-connected to output logvar
+        self.fc1 = nn.Linear(288, self.z_dim)
+        self.fc2 = nn.Linear(288, self.z_dim)
 
     def _get_conv_out(self, shape):
         """
@@ -665,7 +566,6 @@ class VaeCnnEncoder_06_11(torch.nn.Module):
         o = self.conv3(self.conv2(self.conv1(torch.zeros(1, *shape))))
         return int(np.prod(o.size()))
     
-    # reparametrization trick
 
     def bottleneck(self, h):
         """
@@ -694,8 +594,6 @@ class VaeCnnEncoder_06_11(torch.nn.Module):
         x = self.dropout9(self.relu9(self.bn9(self.conv9(x))))
         x = self.relu10(self.bn10(self.conv10(x)))
         x = torch.flatten(x,1)
-        #print("the shape of x is ",x.shape)
-        #x = torch.cat([x, labels], dim=1)
         z, mu, logvar = self.bottleneck(x)
         return z, mu, logvar
 
@@ -708,14 +606,14 @@ class VaeCnnDecoder_06_11(torch.nn.Module):
        :param z_dim: latent dimensions
        """
 
-    def __init__(self, z_dim):#, cond_dim = 10):
+    def __init__(self, z_dim):
         super(VaeCnnDecoder_06_11, self).__init__()
         self.z_dim = z_dim
         ### here need to concate label
         ###block0
         drop_p = 0.1
-        self.fc0 = nn.Linear(self.z_dim, 512) #100 * 4 * 4 * 4)
-        self.bn0 = nn.BatchNorm1d(512) #100 * 4 * 4 * 4)
+        self.fc0 = nn.Linear(self.z_dim, 512)
+        self.bn0 = nn.BatchNorm1d(512) 
         self.relu0 = nn.LeakyReLU()
         self.dropout0 = nn.Dropout1d(p=drop_p)
         ###here need to reshape signal
@@ -780,20 +678,12 @@ class VaeCnnDecoder_06_11(torch.nn.Module):
         self.deconv9 = nn.ConvTranspose2d(in_channels=8,out_channels= 3, kernel_size=(3, 3), stride=(1, 1), padding=0)
         self.sigmoid9 = nn.Sigmoid()
         
-        # self.decoder = nn.Sequential(nn.Linear(self.z_dim, self.hidden_size),
-        #                              nn.ReLU(),
-        #                              nn.Linear(self.hidden_size, self.x_dim),
-        #                              nn.Sigmoid())
-        # why we use sigmoid? becaue the pixel values of images are in [0,1] and sigmoid(x) does just that!
-        # if you don't work with images, you don't have to use that.
-
 
     def forward(self, x):
         """
         This is the function called when doing the forward pass:
         x_reconstruction = VaeDecoder(z)
         """
-        #x = torch.cat([x,labels],dim=1)
         x = self.dropout0(self.relu0(self.bn0(self.fc0(x))))
         x = x.reshape(x.shape[0],32,4,4)
         x = self.dropout1(self.relu1(self.bn1(self.deconv1(x))))
@@ -806,10 +696,6 @@ class VaeCnnDecoder_06_11(torch.nn.Module):
         x = self.dropout7(self.relu7(self.bn7(self.deconv7(x))))
         x = self.dropout8(self.relu8(self.bn8(self.deconv8(x))))
         x = self.sigmoid9(self.deconv9(x))
-        # print("decode",x.shape)
-
-        
-        #x = self.decoder(x)
         return x
 
 
@@ -821,10 +707,6 @@ class encoder_pg(nn.Module):
         super().__init__()
         self.device = device
         self.projected = projected
-        #channel_dict = {4: 512, 8: 512, 16: 256, 32: 128, 64: 64, 128: 64,
-        #                256: 32, 512: 16, 1024: 8}
-        # i cahnged 256 to 3 because:
-        # RuntimeError: Given groups=1, weight of size [64, 32, 4, 4], expected input[100, 3, 256, 256] to have 32 channels, but got 3 channels instead
         channel_dict = {4: 512, 8: 512, 16: 256, 32: 128, 64: 64, 128: 64,
                         256: 3, 512: 16, 1024: 8}
         self.z_dim = z_dim
@@ -887,10 +769,6 @@ class encoder_pg(nn.Module):
     def forward(self, x):
     #c):
         x = torch.flatten(self.main(x),1)
-        #print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-        #print(x.shape)
-        #print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-
         return self.bottleneck(x)
 
 
@@ -912,10 +790,6 @@ class ProjectedVAE(nn.Module):
         self.z_dim = z_dim
         self.outs_shape = outs_shape
         self.big_z = big_z
-        #self.cond_dim = cond_dim
-
-        #if self.cond_dim is not None:
-        #x_dim+= cond_dim
         self.projector = F_RandomProj(proj_type = 2).eval()
         self.projector.requires_grad_(False)
         self.encoder0 = encoder_pg(start_sz = outs_shape["0"][2],
@@ -944,10 +818,10 @@ class ProjectedVAE(nn.Module):
         return outs
 
     def encode(self, outs):
-        z_0,mu_0, logvar_0 = self.encoder0(outs['0'])#z_0, mu_0, logvar_0 = self.encoder0(outs['0'])
-        z_1,mu_1, logvar_1 = self.encoder1(outs['1'])#z_1, mu_1, logvar_1 = self.encoder1(outs['1'])
-        z_2,mu_2, logvar_2 = self.encoder2(outs['2'])#z_2, mu_2, logvar_2 = self.encoder2(outs['2'])
-        z_3,mu_3, logvar_3 = self.encoder3(outs['3'])#z_3, mu_3, logvar_3 = self.encoder3(outs['3'])
+        z_0,mu_0, logvar_0 = self.encoder0(outs['0'])
+        z_1,mu_1, logvar_1 = self.encoder1(outs['1'])
+        z_2,mu_2, logvar_2 = self.encoder2(outs['2'])
+        z_3,mu_3, logvar_3 = self.encoder3(outs['3'])
         mu = torch.cat([mu_0,mu_1,mu_2,mu_3],dim=1)
         logvar = torch.cat([logvar_0,logvar_1,logvar_2,logvar_3],dim=1)
         if self.big_z == False:
@@ -956,8 +830,8 @@ class ProjectedVAE(nn.Module):
             z = reparameterize(mu,logvar,self.device)
         return z, mu, logvar
 
-    def decode(self, z):#, c):#,labels):
-        x = self.decoder(z)#, c)#,labels)
+    def decode(self, z):
+        x = self.decoder(z)
         return x
 
     def sample(self,num_samples):
@@ -966,29 +840,15 @@ class ProjectedVAE(nn.Module):
         Vae.sample() actually generatess new data!
         Sample z ~ N(0,1)
         """
-        #if self.cond_dim is not None:
         multiplyer = 4
         z = torch.randn(num_samples, multiplyer*self.z_dim).to(self.device)
-        #print(mu)
-        #print(std)
-        #z = ((torch.randn(num_samples, multiplyer*self.z_dim)*std.to('cpu'))+mu.to('cpu')).to(self.device)
-        #if x_cond is not None:
-        #print(self.z_dim)
-        #labels = labels_to_one_hots(labels, self.cond_dim).to(device) ###check if neseccery 
-        #else:
-        #     label = torch.randint(0,9, num_samples)
-        #     label = labels_to_one_hots(label, self.cond_dim).to(device)
-        #z = torch.cat([z, labels], dim=1)
-        # #else:
-        # z = torch.randn(num_samples, self.z_dim).to(self.device)
-        return self.decode(z)#,labels)
+        return self.decode(z)
 
     def forward(self, x, memory_save = False):#, c):
         """
         This is the function called when doing the forward pass:
         return x_recon, mu, logvar, z = Vae(X)
         """
-        #if memory_save == False:
         with torch.no_grad():
             x = self.project(x)
         for i in range(4):

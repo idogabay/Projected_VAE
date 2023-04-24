@@ -19,23 +19,6 @@ def main():
     torch.set_float32_matmul_precision('high')
     epochs = 500
     x_shape = (3,256,256)
-    lr =2e-4 #for adam lr of 0.0005 is the optimal
-    batch_size = 30
-    #architecture = "pvae"
-    pics_path ="/home/ido/datasets/projected_vae/obama/resized_images"
-    weights_save_path = "/home/ido/datasets/projected_vae/obama/weights"
-    dataset_name = "flowers"
-    
-    
-    #hyper parameters
-    projected = True
-    transform = torchvision.transforms.Compose([
-        torchvision.transforms.RandomHorizontalFlip(p=0.5),
-        torchvision.transforms.ToTensor(),
-        torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
-        ])
-    dataset = our_datasets.Pokemon_dataset(pics_path,transform)   #PokemonDataset(root=path, rgb=True)#'/content/drive/MyDrive/pokemon/pokemon', rgb=True)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     loss_type = "mse"
     optimizer_type = "Adam"
     z_dim =256
@@ -50,37 +33,37 @@ def main():
                   "2":[40, 128, 32, 32],
                   "3":[40, 256, 16, 16]
                   }
-    ###############
+    lr =2e-4 #for adam lr of 0.0005 is the optimal
+    batch_size = 30
+    projected = True
+    #architecture = "pvae"
     
-    ######################################
-    #hyper parameters for loop
-    betas = [0.1]#[2,5]#[0.1,0.5,1]
-    datasets = ["flowers"]
-    dataset_sizes = [9000]
-    output_base_path = "./output_images"
-    #####################################
-    weights_path = "/home/ido/datasets/projected_vae/obama/weights/obama_date_24-04-2023__time_01-27-58.pth"
+    ### FILL ALL ###
+    pics_path =""
+    weights_save_path = ""
+    dataset_name = ""
+    weights_path = ""
+    output_base_path = ""
+    generated_pics_dir = "./batch_generated"
+    pics_path_base =""
+    weights_save_path_base = ""
+    
+    
+    
+    
+    transform = torchvision.transforms.Compose([
+        torchvision.transforms.RandomHorizontalFlip(p=0.5),
+        torchvision.transforms.ToTensor(),
+        torchvision.transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
+        ])
+    dataset = our_datasets.Pokemon_dataset(pics_path,transform)   #PokemonDataset(root=path, rgb=True)#'/content/drive/MyDrive/pokemon/pokemon', rgb=True)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
     if projected:
         model = ProjectedVAE(z_dim=z_dim,outs_shape=outs_shape,device=device,big_z=big_z)#.to(device)
     else:
         model = Vae_cnn_1(z_dim=4*z_dim,x_shape=x_shape,device=device)#.to(device)
     model = torch.compile(model.to(device))
-    
-    
 
-    # ## calculate FID
-    dataset_images_path = "/home/ido/datasets/projected_vae/pokemon/resized_images"
-    generated_imgs_path = "/home/ido/git_repos/Projected_VAE/output_images/date_17-04-2023__time_18-32-56"
-    print(calc_fid(dataset_images_path,generated_imgs_path))
-
-
-## grid search
-
-
-    # sub_folder = now.strftime("date_%d-%m-%Y__time_%H-%M-%S") #weights_path.split("/")[-1][:-4]
-    generated_pics_dir = "./batch_generated"
-    pics_path_base ="/home/ido/datasets/projected_vae/"
-    weights_save_path_base = "/home/ido/datasets/projected_vae"
 
     torch.cuda.empty_cache()
     json_data = {}
@@ -96,12 +79,6 @@ def main():
     weights_save_path = weights_save_path_base+"/"+dataset_name+"/weights"
     dataset = our_datasets.Pokemon_dataset(pics_path,transform)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, drop_last=True)
-
-    if projected:
-        model = ProjectedVAE(z_dim=z_dim,outs_shape=outs_shape,device=device,big_z=big_z)#.to(device)
-    else:
-        model = Vae_cnn_1(z_dim=4*z_dim,x_shape=x_shape,device=device)
-    model = torch.compile(model.to(device)).to(device)
     
     # training loop
     kl_losses,recon_losses,total_losses, weights_path,end_epoch,lr_history,timestamp,fid_history = training_loop(
