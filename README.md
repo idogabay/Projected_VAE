@@ -43,7 +43,7 @@ tested in VScode.
 **notice you adapt the paths for the right places in your computer**  
 ## Datasets
 we used datasets : Flowers, Pokemons,Obama. all can be downloaded [in this link](https://drive.google.com/file/d/1aAJCZbXNHyraJ6Mi13dSbe7pTyfPXha0/view)
-### FLowers ~8000 images
+### Flowers ~8000 images
 ![1](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/flowers1.jpg)
 ![2](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/flowers2.jpg)  
 ### Pokemon ~800 images
