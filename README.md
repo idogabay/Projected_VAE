@@ -1,7 +1,13 @@
-# Projected_VAE
+# Projected_VAE  
+> *Abstract:* *In recent years, generative models have gained significant attention for their ability to learn the distribution of a given dataset and generate new examples. However, the training process usually involves a large dataset, which is a costly and time-consuming process. This poses a challenge for generative models when training on small datasets.  
+To address this issue, we proposed a new architecture called Projected-VAE, which uses a pre-trained classification network to extract features from an image and then trains the model on these feature maps. this method is based on the Projected-GAN model. With this model we aim to improve the performance of VAE models on small datasets.  
+While working on this project, we tested our model on various datasets of different sizes and trained it with different parameters to find the optimal weights. We evaluated our projected VAE model using the FID score, which measures the similarity between generated images and real images from the dataset.  
+> To verify whether the project's goal was achieved, we compared the performance of our model to that of a regular VAE model with the same architecture. The results of our model outperformed the regular VAE model in most cases, demonstrating the effectiveness of our approach.*
+  
+
   - In this project we explore with a new type of VAE called Projected VAE (PVAE for short).  
   - The advantge of PAVE is the ability to perform better image generation of small datasets.  
-  - In this project we have a training and infering (creating image) enviroment for the PVAE.  
+  - In this project we allow both training and generation of images using PVAE.
   
     
 ![1](https://github.com/idogabay/Projected_VAE/blob/270df427193767f2d8dd28a60b0b3a59bb3b21b1/readme_imgs/top.jpg)
@@ -15,7 +21,7 @@ python -m pip install -r requirments.txt
 
 
 ## training
-you can train are own PVAE this your selected dataset.
+you can train your own PVAE with your selected dataset.
 ### data preperation  
 the dataset folder format must be:  
   - dataset_name  
@@ -37,7 +43,7 @@ tested in VScode.
 **notice you adapt the paths for the right places in your computer**  
 ## Datasets
 we used datasets : Flowers, Pokemons,Obama. all can be downloaded [in this link](https://drive.google.com/file/d/1aAJCZbXNHyraJ6Mi13dSbe7pTyfPXha0/view)
-### FLowers ~8000 images
+### Flowers ~8000 images
 ![1](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/flowers1.jpg)
 ![2](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/flowers2.jpg)  
 ### Pokemon ~800 images
