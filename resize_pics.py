@@ -37,8 +37,8 @@ def main():
     pics_root_dir = os.path.join(base_path,"blah") #src_folder
     pics_new_root_dir= os.path.join(base_path,"blah2") #dst_folder
     #xml_root_folder = "/home/picky/Documents/datasets/exp_date/30.8.22/labels (copy)" #labels_folder
-    width = 100
-    height = 100
+    width = 180
+    height = 180
     one_folder = True
     
     if one_folder :
