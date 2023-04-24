@@ -29,7 +29,7 @@ def main():
     
     
     #hyper parameters
-    projected = False
+    projected = True
     transform = torchvision.transforms.Compose([
         #torchvision.transforms.Resize((256,256)),
         #torchvision.transforms.ColorJitter(brightness = 0.1,contrast = 0,saturation = 0.1,hue = 0.05),
@@ -60,31 +60,32 @@ def main():
     
     ######################################
     #hyper parameters for loop
-    betas = [0.01,0.05,0.1]#[2,5]#[0.1,0.5,1]
+    betas = [0.1]#[2,5]#[0.1,0.5,1]
     datasets = ["flowers"]
     #big_zs = [True,False]
-    dataset_sizes = [8189]
+    dataset_sizes = [9000]
     output_base_path = "./output_images"
     #lrs = [2e-4,5e-5,1e-5] #2e-4
     #proj_types = [2,1,0]
     #architecture = "pvae"
     augmentations = ["horizontalflip"]
     #####################################
-    weights_path = ""
+    weights_path = "/home/ido/datasets/projected_vae/obama/weights/obama_date_24-04-2023__time_01-27-58.pth"
     if projected:
         model = ProjectedVAE(z_dim=z_dim,outs_shape=outs_shape,device=device,big_z=big_z)#.to(device)
     else:
         model = Vae_cnn_1(z_dim=4*z_dim,x_shape=x_shape,device=device)#.to(device)
     model = torch.compile(model.to(device))
-
-    #imgs_output = ""
+    
+    
+    #imgs_output = "/home/ido/git_repos/Projected_VAE/batch_images"
     #generate_samples(100,model,weights_path,imgs_output)
 
 
     # ## calculate FID
-    # dataset_images_path = ""
-    # generated_imgs_path = ""
-    # calc_fid(dataset_images_path,generated_imgs_path)
+    dataset_images_path = "/home/ido/datasets/projected_vae/pokemon/resized_images"
+    generated_imgs_path = "/home/ido/git_repos/Projected_VAE/output_images/date_17-04-2023__time_18-32-56"
+    print(calc_fid(dataset_images_path,generated_imgs_path))
 
 
 
@@ -175,10 +176,6 @@ def main():
     # plot_loss(recon_losses,title)
     # title = "total"
     # plot_loss(total_losses,title)
-
-
-
-
 
 if __name__ == "__main__":
     main()
