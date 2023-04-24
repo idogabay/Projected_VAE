@@ -4,15 +4,14 @@ To address this issue, we proposed a new architecture called Projected-VAE, whic
 While working on this project, we tested our model on various datasets of different sizes and trained it with different parameters to find the optimal weights. We evaluated our projected VAE model using the FID score, which measures the similarity between generated images and real images from the dataset.  
 > To verify whether the project's goal was achieved, we compared the performance of our model to that of a regular VAE model with the same architecture. The results of our model outperformed the regular VAE model in most cases, demonstrating the effectiveness of our approach.*
   
-https://github.com/idogabay/Projected_VAE/blob/0635bfab3418e35db126cd3fac5f508a3ba1fa3f/readme_imgs/top2.jpg
   - In this project we explore with a new type of VAE called Projected VAE (PVAE for short).  
   - The advantge of PAVE is the ability to perform better image generation of small datasets.  
   - In this project we allow both training and generation of images using PVAE.
   
-
-![1](https://github.com/idogabay/Projected_VAE/blob/0635bfab3418e35db126cd3fac5f508a3ba1fa3f/readme_imgs/architecture.jpg)  
-![1](https://github.com/idogabay/Projected_VAE/blob/0635bfab3418e35db126cd3fac5f508a3ba1fa3f/readme_imgs/top1.jpg)
-![1](https://github.com/idogabay/Projected_VAE/blob/0635bfab3418e35db126cd3fac5f508a3ba1fa3f/readme_imgs/top2.jpg)
+  
+![1](https://github.com/idogabay/Projected_VAE/blob/a1db156c8a253d61994b7ba57bed1716c4ec0cda/readme_imgs/architecture.jpg)  
+![1](https://github.com/idogabay/Projected_VAE/blob/a1db156c8a253d61994b7ba57bed1716c4ec0cda/readme_imgs/top1.jpg)
+![1](https://github.com/idogabay/Projected_VAE/blob/a1db156c8a253d61994b7ba57bed1716c4ec0cda/readme_imgs/top2.jpg)
 this projected is based of [Projected GAN](https://github.com/autonomousvision/projected-gan) project
 ## Requirements to run  
 To install the required libraries, run:
