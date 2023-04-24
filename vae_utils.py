@@ -293,7 +293,8 @@ class Vae_cnn_1(torch.nn.Module):
         This is the function called when doing the forward pass:
         return x_recon, mu, logvar, z = Vae(X)
         """
-        z,mu, logvar = self.encode(x)
+        mu, logvar = self.encode(x)
+        z = reparameterize(mu,logvar,self.device)
         x_recon = self.decode(z)
         return x_recon, mu, logvar
 
@@ -703,7 +704,7 @@ class VaeCnnDecoder_06_11(torch.nn.Module):
 class encoder_pg(nn.Module):
     def __init__(self, nc=None, ndf=None, start_sz=256, end_sz=8,
                 head=None, separable=False, patch=False,z_dim=100,
-                device='cpu',projected = False,big_z = True):
+                device='cpu',projected = False):
         super().__init__()
         self.device = device
         self.projected = projected
@@ -715,7 +716,6 @@ class encoder_pg(nn.Module):
             sizes = np.array(list(channel_dict.keys()))
             start_sz = sizes[np.argmin(abs(sizes - start_sz))]
         self.start_sz = start_sz
-        self.big_z = big_z
 
         # if given ndf, allocate all layers with the same ndf
         if ndf is None:
@@ -742,14 +742,10 @@ class encoder_pg(nn.Module):
             start_sz = start_sz // 2
 
         layers.append(conv2d(in_channels = nfc[end_sz], out_channels = 8, kernel_size =4, padding=0, bias=False))
-
-        ### i added 
-        #net= 
-        #x = torch.flatten(net(x),1)
         self.main = nn.Sequential(*layers)
 
-        self.fc1 = nn.Linear(200, self.z_dim)#nn.Linear(self.hidden_size, self.z_dim, bias=True)  # fully-connected to output mu
-        self.fc2 = nn.Linear(200, self.z_dim)#nn.Linear(self.hidden_size, self.z_dim, bias=True)  # fully-connected to output logvar
+        self.fc1 = nn.Linear(200, self.z_dim)
+        self.fc2 = nn.Linear(200, self.z_dim)
    
     def bottleneck(self, h):
         """
@@ -759,59 +755,41 @@ class encoder_pg(nn.Module):
         """ 
         mu, logvar = self.fc1(h), self.fc2(h)
         # use the reparametrization trick as torch.normal(mu, logvar.exp()) is not differentiable
-        if self.projected == False or self.big_z == False:
-            z = reparameterize(mu, logvar, device=self.device)
-        else:
-            z = None
-        return z, mu, logvar
+        return mu, logvar
 
 
     def forward(self, x):
-    #c):
         x = torch.flatten(self.main(x),1)
         return self.bottleneck(x)
 
 
-
-
-
-
-
-
-
-# TODO: insert projected part int the vae for the purpose of saving the weights as one model.
-
-
-
 class ProjectedVAE(nn.Module):
-    def __init__(self, z_dim,outs_shape,device, big_z):
+    def __init__(self, z_dim,outs_shape,device):
         super(ProjectedVAE, self).__init__()
         self.device = device
         self.z_dim = z_dim
         self.outs_shape = outs_shape
-        self.big_z = big_z
         self.projector = F_RandomProj(proj_type = 2).eval()
         self.projector.requires_grad_(False)
         self.encoder0 = encoder_pg(start_sz = outs_shape["0"][2],
                             end_sz=8, separable=False,
                             patch=False ,z_dim=z_dim,
-                            device=self.device,projected=True,big_z=self.big_z)
+                            device=self.device,projected=True)
         self.encoder1 = encoder_pg(start_sz = outs_shape["1"][2],
                             end_sz=8, separable=False,
                             patch=False ,z_dim=z_dim,
-                            device=self.device,projected=True,big_z=self.big_z)
+                            device=self.device,projected=True)
         self.encoder2 = encoder_pg(start_sz = outs_shape["2"][2],
                                    end_sz=8, separable=False,
                                    patch=False ,z_dim=z_dim,
-                                   device=self.device,projected=True,big_z=self.big_z)
+                                   device=self.device,projected=True)
         self.encoder3 = encoder_pg(start_sz = outs_shape["3"][2],
                                    end_sz=8, separable=False,
                                    patch=False ,z_dim=z_dim,
-                                   device=self.device,projected=True,big_z=self.big_z)
-        self.decoder = Generator(z_dim=4*self.z_dim,synthesis_kwargs={'lite': False})#VaeCnnDecoder_06_11(self.z_dim)#,self.cond_dim)
+                                   device=self.device,projected=True)
+        self.decoder = Generator(z_dim=4*self.z_dim,synthesis_kwargs={'lite': False})
 
-        # params:
-        # 
+
         
     def project(self,x):
         outs = self.projector(x)
@@ -824,10 +802,7 @@ class ProjectedVAE(nn.Module):
         z_3,mu_3, logvar_3 = self.encoder3(outs['3'])
         mu = torch.cat([mu_0,mu_1,mu_2,mu_3],dim=1)
         logvar = torch.cat([logvar_0,logvar_1,logvar_2,logvar_3],dim=1)
-        if self.big_z == False:
-            z = torch.cat([z_0,z_1,z_2,z_3],dim=1)
-        else:
-            z = reparameterize(mu,logvar,self.device)
+        z = reparameterize(mu,logvar,self.device)
         return z, mu, logvar
 
     def decode(self, z):
@@ -856,6 +831,3 @@ class ProjectedVAE(nn.Module):
         z, mu, logvar = self.encode(x)
         x_recon = self.decode(z)        
         return x_recon, mu, logvar
-
-
-
