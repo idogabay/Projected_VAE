@@ -15,7 +15,7 @@ python -m pip install -r requirments.txt
 
 
 ## training
-you can train are own PVAE this your selected dataset.
+you can train your own PVAE with your selected dataset.
 ### data preperation  
 the dataset folder format must be:  
   - dataset_name  
