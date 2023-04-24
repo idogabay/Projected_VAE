@@ -45,4 +45,4 @@ we used datasets : a, b,c. all can be downloaded [in this link](https://drive.go
 ## Results  
  - In nost cases PVAE performed better then VAE.  
  - We compared the two using FID and the Flowers dataset in a decreasing size:
- ![1](https://github.com/idogabay/Projected_VAE/blob/566b4042265f9a16311ff827eff32fe90fe1413b/readme_imgs/graph.jpg)
+ ![1]https://github.com/idogabay/Projected_VAE/blob/a9ab72267143858219b89d3c61d287f98d9f5c43/readme_imgs/graph.jpg
