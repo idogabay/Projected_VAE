@@ -4,3 +4,4 @@ batch_recon
 batch_images
 *.pyc
 vae_training.py
+".vscode"
