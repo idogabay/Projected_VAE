@@ -13,9 +13,9 @@ the dataset folder format must be:
     - weights  
    - **notice that you should resize the dataset images to 256x256 therefore the folder "resized_images"**
 ### training  
-you can train the PVAE by running "train.py"  
+you can train the PVAE by running "train.py".  
+tested in VScode.  
 **notice you adapt the paths for the right places in your computer**  
-(tested in VScode)
 
 ## Generating Images  
 run the script "generate_images.py"  
