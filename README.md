@@ -11,7 +11,7 @@ While working on this project, we tested our model on various datasets of differ
   
 ![1](https://github.com/idogabay/Projected_VAE/blob/a1db156c8a253d61994b7ba57bed1716c4ec0cda/readme_imgs/architecture.jpg)  
 ![1](https://github.com/idogabay/Projected_VAE/blob/a1db156c8a253d61994b7ba57bed1716c4ec0cda/readme_imgs/top1.jpg)
-![1](https://github.com/idogabay/Projected_VAE/blob/a1db156c8a253d61994b7ba57bed1716c4ec0cda/readme_imgs/top2.jpg)
+![1](https://github.com/idogabay/Projected_VAE/blob/1a29f4505b168041f24c6710170456d3d0f7f855/readme_imgs/top2.jpg)
 this projected is based of [Projected GAN](https://github.com/autonomousvision/projected-gan) project
 ## Requirements to run  
 To install the required libraries, run:
