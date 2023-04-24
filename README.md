@@ -23,20 +23,20 @@ run the script "generate_images.py"
 ## Datasets
 we used datasets : a, b,c. all can be downloaded [in this link](https://drive.google.com/file/d/1aAJCZbXNHyraJ6Mi13dSbe7pTyfPXha0/view)
 ### Dataset a
-![a](https://github.com/idogabay/Projected_VAE/blob/0d322aad35a3d1cd4c0e829e2455993a10b48b3e/readme_imgs/flowers1.jpg)
-![3852521](https://github.com/idogabay/Projected_VAE/blob/0d322aad35a3d1cd4c0e829e2455993a10b48b3e/readme_imgs/flowers2.jpg)
+![a](https://github.com/idogabay/Projected_VAE/blob/fee8b15ee408f9c5fa7e1aa589626672aaabeac4/readme_imgs/flowers1.jpg)
+![3852521](https://github.com/idogabay/Projected_VAE/blob/fee8b15ee408f9c5fa7e1aa589626672aaabeac4/readme_imgs/flowers2.jpg)
 ### Dataset b
-![3852521](https://github.com/idogabay/Projected_VAE/blob/0d322aad35a3d1cd4c0e829e2455993a10b48b3e/readme_imgs/pokemons1.jpg) ![3852521](https://github.com/idogabay/Projected_VAE/blob/0d322aad35a3d1cd4c0e829e2455993a10b48b3e/readme_imgs/pokemons2.jpg)
+![3852521](https://github.com/idogabay/Projected_VAE/blob/fee8b15ee408f9c5fa7e1aa589626672aaabeac4/readme_imgs/pokemons1.jpg) ![3852521](https://github.com/idogabay/Projected_VAE/blob/fee8b15ee408f9c5fa7e1aa589626672aaabeac4/readme_imgs/pokemons2.jpg)
 ### Dataset c
-![3852521](https://github.com/idogabay/Projected_VAE/blob/0d322aad35a3d1cd4c0e829e2455993a10b48b3e/readme_imgs/obama1.jpg)![3852521](https://github.com/idogabay/Projected_VAE/blob/0d322aad35a3d1cd4c0e829e2455993a10b48b3e/readme_imgs/obama2.jpg)
+![3852521](https://github.com/idogabay/Projected_VAE/blob/fee8b15ee408f9c5fa7e1aa589626672aaabeac4/readme_imgs/obama1.jpg)![3852521](https://github.com/idogabay/Projected_VAE/blob/fee8b15ee408f9c5fa7e1aa589626672aaabeac4/readme_imgs/obama2.jpg)
 
 ## Results on decreasing size dataset - Flowers VAE vs PVAE:
 ### 8000 images
-![3852521](https://github.com/idogabay/Projected_VAE/blob/0d322aad35a3d1cd4c0e829e2455993a10b48b3e/readme_imgs/8000vae.jpg)
-![3852521](https://github.com/idogabay/Projected_VAE/blob/0d322aad35a3d1cd4c0e829e2455993a10b48b3e/readme_imgs/8000pvae.jpg)
+![3852521](https://github.com/idogabay/Projected_VAE/blob/fee8b15ee408f9c5fa7e1aa589626672aaabeac4/readme_imgs/8000vae.jpg)
+![3852521](https://github.com/idogabay/Projected_VAE/blob/fee8b15ee408f9c5fa7e1aa589626672aaabeac4/readme_imgs/8000pvae.jpg)
 ### 2000 images
-![3852521](https://github.com/idogabay/Projected_VAE/blob/0d322aad35a3d1cd4c0e829e2455993a10b48b3e/readme_imgs/2000vae.jpg)
-![3852521](https://github.com/idogabay/Projected_VAE/blob/0d322aad35a3d1cd4c0e829e2455993a10b48b3e/readme_imgs/2000pvae.jpg)
+![3852521](https://github.com/idogabay/Projected_VAE/blob/fee8b15ee408f9c5fa7e1aa589626672aaabeac4/readme_imgs/2000vae.jpg)
+![3852521](https://github.com/idogabay/Projected_VAE/blob/fee8b15ee408f9c5fa7e1aa589626672aaabeac4/readme_imgs/2000pvae.jpg)
 ### 500 images
-![3852521](https://github.com/idogabay/Projected_VAE/blob/0d322aad35a3d1cd4c0e829e2455993a10b48b3e/readme_imgs/1000vae.jpg)
-![3852521](https://github.com/idogabay/Projected_VAE/blob/0d322aad35a3d1cd4c0e829e2455993a10b48b3e/readme_imgs/1000pvae.jpg)
+![3852521](https://github.com/idogabay/Projected_VAE/blob/fee8b15ee408f9c5fa7e1aa589626672aaabeac4/readme_imgs/1000vae.jpg)
+![3852521](https://github.com/idogabay/Projected_VAE/blob/fee8b15ee408f9c5fa7e1aa589626672aaabeac4/readme_imgs/1000pvae.jpg)
