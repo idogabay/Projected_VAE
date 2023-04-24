@@ -1,4 +1,7 @@
-# Projected_VAE
+# Projected_VAE  
+> **Abstract:** *In recent years, generative models have gained significant interest due to their ability to learn datasets' distribution and generate new examples. Our project focuses on the VAE model for image generation. However, training VAEs requires large datasets, which can be costly and time-consuming. We were inspired by the "Projected GAN," which allows training on small datasets, and applied its idea to our VAE-based model, which we named "Projected VAE." Our goal was to improve the VAE's results, particularly for small datasets. We tested our model with varying parameters on different datasets and evaluated its performance using FID score and visual inspection.*  
+  
+
   - In this project we explore with a new type of VAE called Projected VAE (PVAE for short).  
   - The advantge of PAVE is the ability to perform better image generation of small datasets.  
   - In this project we allow both training and generation of images using PVAE.
