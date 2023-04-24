@@ -1,6 +1,6 @@
 # Projected_VAE
   - In this project we explore with a new type of VAE called Projected VAE (PVAE for short).  
-  - The advantge of PAVE is the ability to perform beter image generation of small datasets.  
+  - The advantge of PAVE is the ability to perform better image generation of small datasets.  
   - In this project we have a training and infering (creating image) enviroment for the PVAE.  
   
     
