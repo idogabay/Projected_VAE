@@ -1,7 +1,9 @@
 # Projected_VAE
+![1](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/top.jpg)  
 In this project we explore with a new type of VAE called Projected VAE (PVAE for short).  
 the advantge of PAVE is ability to perform beter imgae generation of small datasets.
 In this project we have a training and infering (creating image) enviroment for the PVAE.  
+![1](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/architecture.jpg)  
 this projected is based of [Projected GAN](https://github.com/autonomousvision/projected-gan) project
 ## training:
 you can train are own PVAE this your selected dataset.
@@ -25,24 +27,24 @@ run the script "generate_images.py"
 we used datasets : a, b,c. all can be downloaded [in this link](https://drive.google.com/file/d/1aAJCZbXNHyraJ6Mi13dSbe7pTyfPXha0/view)
 ### Dataset a
 ![1](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/flowers1.jpg)
-![2](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/flowers2.jpg)
+![2](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/flowers2.jpg)  
 ### Dataset b
-![1](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/pokemon1.jpg) ![2](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/pokemon2.jpg)
+![1](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/pokemon1.jpg) ![2](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/pokemon2.jpg)  
 ### Dataset c
-![1](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/obama1.jpg)![2](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/obama2.jpg)
+![1](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/obama1.jpg)![2](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/obama2.jpg)  
 
 ## Results on decreasing size dataset - Flowers VAE vs PVAE:
 ### 8000 images
 ![1](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/8000vae.jpg)
-![2](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/8000pvae.jpg)
+![2](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/8000pvae.jpg)  
 ### 2000 images
 ![1](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/2000vae.jpg)
-![2](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/2000pvae.jpg)
+![2](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/2000pvae.jpg)  
 ### 500 images
 ![1](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/1000vae.jpg)
-![2](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/1000pvae.jpg)
+![2](https://github.com/idogabay/Projected_VAE/blob/975751538a1a202ed438a7af5d7a7b9f8b83ad58/readme_imgs/1000pvae.jpg)  
 
 ## Results  
  - In nost cases PVAE performed better then VAE.  
  - We compared the two using FID and the Flowers dataset in a decreasing size:
- ![1](https://github.com/idogabay/Projected_VAE/blob/566b4042265f9a16311ff827eff32fe90fe1413b/readme_imgs/graph.jpg)
+ ![1](https://github.com/idogabay/Projected_VAE/blob/a9ab72267143858219b89d3c61d287f98d9f5c43/readme_imgs/graph.jpg)
