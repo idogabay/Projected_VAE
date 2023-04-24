@@ -1,7 +1,7 @@
 # Projected_VAE
   - In this project we explore with a new type of VAE called Projected VAE (PVAE for short).  
   - The advantge of PAVE is the ability to perform better image generation of small datasets.  
-  - In this project we have a training and infering (creating image) enviroment for the PVAE.  
+  - In this project we allow both training and generation of images using PVAE.
   
     
 ![1](https://github.com/idogabay/Projected_VAE/blob/270df427193767f2d8dd28a60b0b3a59bb3b21b1/readme_imgs/top.jpg)
